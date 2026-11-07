@@ -75,6 +75,7 @@ function ProfileForm({ profile }: { profile: Profile }) {
     <Title>Профиль</Title>
     <View style={s.row}><Avatar user={profile} size={72} /><View style={s.fill}><Label>{profile.displayName}</Label><Label>@{profile.username}</Label></View></View>
     <Button title={picking || upload.isPending ? 'Загрузка фото…' : profile.avatarId ? 'Изменить фото' : 'Добавить фото'} disabled={busy} onPress={() => { void pickAvatar(); }} />
+    <Label>JPEG/PNG до 5 МиБ. Большие фото уменьшаются автоматически.</Label>
     {profile.avatarId && <Button title={remove.isPending ? 'Удаление…' : 'Удалить фото'} disabled={busy} onPress={() => remove.mutate()} />}
     <Field label="Отображаемое имя" value={displayName} onChangeText={setDisplayName} maxLength={80} editable={!busy} />
     <Field label="Дата рождения (ГГГГ-ММ-ДД)" value={birthDate} onChangeText={setBirthDate} placeholder="Например, 2000-05-24" maxLength={10} editable={!busy} autoCapitalize="none" />

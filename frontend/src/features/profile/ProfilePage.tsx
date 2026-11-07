@@ -83,6 +83,7 @@ function ProfileEditor({ profile }: { profile: Profile }) {
       <input ref={fileInput} type="file" accept="image/jpeg,image/png" onChange={handleAvatar} disabled={busy} hidden tabIndex={-1} aria-hidden="true" />
       {profile.avatarId && <button type="button" disabled={busy} onClick={() => { setNotice(''); remove.mutate(); }}>Удалить фото</button>}
     </div>
+    <p>JPEG/PNG до 5 МиБ. Большие фото уменьшаются автоматически.</p>
     <form className={styles.form} onSubmit={handleSubmit}>
       <label>Отображаемое имя<input value={name} onChange={(event) => setName(event.target.value)} maxLength={80} required disabled={busy} /></label>
       <label>Дата рождения<input type="date" value={birthDate} onChange={(event) => setBirthDate(event.target.value)} max={new Date().toISOString().slice(0, 10)} disabled={busy} /></label>

@@ -7,9 +7,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import ru.msrpo.chat.common.*;
-import javax.imageio.ImageIO;
-import javax.imageio.stream.MemoryCacheImageInputStream;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.*;
@@ -19,7 +16,6 @@ import java.util.*;
 @Transactional(readOnly = true)
 public class UserService {
     private static final int MAX_AVATAR_BYTES = 5 * 1024 * 1024;
-    private static final int MAX_AVATAR_SIDE = 4096;
     private final UserRepository users;
     private final UserAvatarRepository avatars;
     public record AvatarBytes(String mimeType, byte[] content) {}
@@ -41,12 +37,10 @@ public class UserService {
 
     @Transactional
     public ProfileResponse replaceAvatar(UUID id, MultipartFile file) {
-        byte[] content = readAvatar(file);
-        String mimeType = avatarMime(content);
-        validateImage(content);
+        var image = AvatarImageProcessor.process(readAvatar(file));
         var user = users.lockById(id).orElseThrow(ApiException::notFound);
         UUID previous = user.getAvatarId();
-        var avatar = avatars.saveAndFlush(UserAvatar.create(mimeType, content));
+        var avatar = avatars.saveAndFlush(UserAvatar.create(image.mimeType(), image.content()));
         user.setAvatarId(avatar.getId());
         users.saveAndFlush(user);
         if (previous != null) avatars.deleteById(previous);
@@ -81,33 +75,6 @@ public class UserService {
             return content;
         } catch (IOException error) {
             throw ApiException.badRequest("Не удалось прочитать изображение");
-        }
-    }
-
-    private static String avatarMime(byte[] content) {
-        if (content.length >= 8 && content[0] == (byte) 0x89 && content[1] == 'P' && content[2] == 'N'
-                && content[3] == 'G' && content[4] == 13 && content[5] == 10 && content[6] == 26 && content[7] == 10)
-            return "image/png";
-        if (content.length >= 3 && content[0] == (byte) 0xff && content[1] == (byte) 0xd8 && content[2] == (byte) 0xff)
-            return "image/jpeg";
-        throw ApiException.badRequest("Используйте изображение JPEG или PNG");
-    }
-
-    private static void validateImage(byte[] content) {
-        try (var input = new MemoryCacheImageInputStream(new ByteArrayInputStream(content))) {
-            var readers = ImageIO.getImageReaders(input);
-            if (!readers.hasNext()) throw ApiException.badRequest("Изображение повреждено");
-            var reader = readers.next();
-            try {
-                reader.setInput(input, true, true);
-                int width = reader.getWidth(0), height = reader.getHeight(0);
-                if (width < 1 || height < 1 || width > MAX_AVATAR_SIDE || height > MAX_AVATAR_SIDE)
-                    throw ApiException.badRequest("Размер изображения должен быть не больше 4096 × 4096 пикселей");
-                if (reader.read(0) == null) throw ApiException.badRequest("Изображение повреждено");
-            } finally { reader.dispose(); }
-        } catch (IOException | RuntimeException error) {
-            if (error instanceof ApiException api) throw api;
-            throw ApiException.badRequest("Изображение повреждено");
         }
     }
 
