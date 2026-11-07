@@ -1,0 +1,49 @@
+@import '@fontsource/press-start-2p/cyrillic-400.css';
+@import '@fontsource/press-start-2p/latin-400.css';
+@import '@fontsource/roboto-mono/cyrillic-400.css';
+@import '@fontsource/roboto-mono/latin-400.css';
+@import '@fontsource/roboto-mono/cyrillic-600.css';
+@import '@fontsource/roboto-mono/latin-600.css';
+
+:root {
+  --font-body: 'Roboto Mono', monospace;
+  --font-pixel: 'Press Start 2P', monospace;
+  --background: #252c23;
+  --panel: #c6c6c6;
+  --chat: #373d33;
+  --message: #e5e5db;
+  --mine: #d7e5b8;
+  --accent: #88b548;
+  --border: #1f241d;
+  --text: #22281f;
+  --muted: #535b4b;
+  --text-on-dark: #f2f3e7;
+  --muted-on-dark: #bec4af;
+  --bevel: inset 1px 1px #f2f2ea, inset -2px -2px #74786f;
+  font: 14px/1.5 var(--font-body);
+  color: var(--text);
+  background: var(--background);
+  color-scheme: dark;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; }
+button, input, textarea { font: inherit; border-radius: 0; }
+button, .button { min-height: 48px; padding: 12px 18px; border: 2px solid var(--border); color: var(--text); background: var(--panel); box-shadow: var(--bevel); font: 12px/1.7 var(--font-pixel); cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; text-align: center; }
+button:hover:not(:disabled), .button:hover { background: #d4d5ce; }
+button:active:not(:disabled), .button:active { box-shadow: inset 2px 2px #73776b, inset -1px -1px #f2f2ea; }
+button:disabled { cursor: not-allowed; color: #656a5d; background: #adb2a5; }
+button.primary, .button.primary { background: var(--accent); }
+button.primary:hover:not(:disabled), .button.primary:hover { background: #9dc862; }
+button.primary:disabled { background: #b3c19d; }
+.iconButton { padding: 0; width: 48px; min-width: 48px; font-size: 22px; line-height: 1; }
+input, textarea { background: var(--chat); border: 2px solid var(--border); color: var(--text-on-dark); box-shadow: inset 1px 1px #191e17, inset -1px -1px #858c79; min-height: 48px; padding: 11px 10px; }
+input::placeholder, textarea::placeholder { color: #e0e3d5; opacity: 1; }
+input:disabled, textarea:read-only { opacity: .72; }
+:focus-visible { outline: 3px solid #d7f596; outline-offset: 3px; }
+input:focus-visible, textarea:focus-visible { outline-offset: -4px; }
+.srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+a { color: inherit; }
+::selection { background: #bedb91; color: #182411; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; } }

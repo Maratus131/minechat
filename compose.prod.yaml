@@ -1,0 +1,90 @@
+name: minechat-prod
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    mem_limit: 512m
+    environment:
+      POSTGRES_DB: chat
+      POSTGRES_USER: chat
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Generate .env.prod with deploy/init-env.sh}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chat -d chat"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    logging: *logging
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.2.8
+    restart: unless-stopped
+    mem_limit: 1536m
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s' > /dev/null"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
+    logging: *logging
+
+  backend:
+    image: minechat-backend:prod
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    mem_limit: 1024m
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/chat
+      DB_USER: chat
+      DB_PASSWORD: ${DB_PASSWORD:?Generate .env.prod with deploy/init-env.sh}
+      JWT_SECRET: ${JWT_SECRET:?Generate .env.prod with deploy/init-env.sh}
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      CORS_ORIGINS: ${CORS_ORIGINS:?Set the public origin in .env.prod}
+      JAVA_TOOL_OPTIONS: -Xms128m -Xmx512m -XX:MaxDirectMemorySize=128m -XX:MaxMetaspaceSize=256m
+    depends_on:
+      postgres:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    logging: *logging
+
+  web:
+    image: minechat-web:prod
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    restart: unless-stopped
+    mem_limit: 128m
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - backend
+    logging: *logging
+
+volumes:
+  postgres-data:
+  elasticsearch-data:
+  caddy-data:
+  caddy-config:

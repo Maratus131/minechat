@@ -1,0 +1,30 @@
+.listArea { flex: 1; overflow: auto; min-height: 0; }
+.list { list-style: none; padding: 0; margin: 0; }
+.dialog { width: 100%; display: flex; align-items: center; justify-content: flex-start; gap: 12px; padding: 12px; min-height: 76px; color: var(--text); background: transparent; text-align: left; text-decoration: none; border: 0; border-bottom: 1px solid #a1a597; box-shadow: none; font: 14px/1.5 var(--font-body); }
+.dialog:hover { background: #d7dacd; }
+.dialog[aria-current='page'] { background: var(--mine); box-shadow: inset 4px 0 var(--accent); }
+.dialogText { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 5px; }
+.rowHeading { display: flex; align-items: baseline; gap: 8px; }
+.dialogText strong { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 14px; min-width: 0; }
+.rowHeading strong { flex: 1; }
+.rowHeading time { font-size: 10px; color: var(--muted); flex: none; }
+.preview { font-size: 11px; line-height: 1.7; color: var(--muted); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.emptyList { line-height: 1.8; font-size: 12px; color: var(--muted); padding: 12px; margin: 0; }
+.sectionTitle { margin: 0; padding: 12px; font: 11px/1.7 var(--font-pixel); color: var(--muted); }
+.more { margin: 12px; width: calc(100% - 24px); font-size: 10px; }
+.results section + section { border-top: 2px solid #93988a; margin-top: 12px; }
+.people { height: 100%; min-height: 0; display: flex; flex-direction: column; background: var(--chat); border: 2px solid var(--border); box-shadow: var(--bevel); padding: 2px; }
+.peopleHeader { display: flex; gap: 16px; align-items: center; padding: 14px 12px; background: var(--panel); }
+.peopleHeader h1 { font: 15px/1.7 var(--font-pixel); margin: 0; }
+.peopleBody { padding: 20px 16px; flex: 1; overflow: auto; min-height: 0; color: var(--text-on-dark); }
+.hint { font-size: 11px; color: var(--muted-on-dark); line-height: 1.8; margin: 0 0 16px; }
+.channelForm { display: grid; gap: 12px; max-width: 560px; }
+.channelForm label { font-size: 12px; line-height: 1.7; }
+.channelForm textarea { min-width: 0; width: 100%; resize: vertical; }
+.channelForm > p[role='alert'] { color: #ffd3c5; font-size: 12px; line-height: 1.7; }
+.channelForm .hint { margin: 0; }
+@media (max-width: 700px) { .peopleHeader h1 { font-size: 12px; } }
+.groupChoices { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; max-height: 260px; overflow: auto; }
+.groupChoices li label { display: flex; align-items: center; gap: 10px; padding: 8px; border: 2px solid var(--border); background: var(--message); color: var(--text); cursor: pointer; }
+.groupChoices li label > span:last-child { display: grid; gap: 3px; }
+.groupChoices small { font-size: 10px; color: var(--muted); }

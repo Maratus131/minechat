@@ -1,0 +1,37 @@
+{
+  "name": "minechat-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.25.0",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "vite --host localhost",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host localhost"
+  },
+  "dependencies": {
+    "@fontsource/press-start-2p": "5.3.0",
+    "@fontsource/roboto-mono": "5.3.0",
+    "@tanstack/react-query": "5.104.2",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-router": "8.4.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "eslint": "10.12.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.13.0",
+    "typescript": "~6.0.0",
+    "typescript-eslint": "8.71.2",
+    "vite": "8.3.4"
+  }
+}

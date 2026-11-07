@@ -1,0 +1,40 @@
+{
+  "name": "minechat-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "main": "expo-router/entry",
+  "packageManager": "pnpm@11.25.0",
+  "scripts": {
+    "start": "expo start --dev-client",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@expo-google-fonts/press-start-2p": "^0.4.0",
+    "@expo-google-fonts/roboto-mono": "^0.4.0",
+    "@tanstack/react-query": "^5.104.2",
+    "expo": "~55.0.0",
+    "expo-audio": "~55.0.18",
+    "expo-build-properties": "~55.0.0",
+    "expo-constants": "~55.0.0",
+    "expo-dev-client": "~55.0.0",
+    "expo-document-picker": "~55.0.0",
+    "expo-file-system": "~55.0.0",
+    "expo-font": "~55.0.0",
+    "expo-image-picker": "~55.0.0",
+    "expo-linking": "~55.0.0",
+    "expo-router": "~55.0.0",
+    "expo-sharing": "~55.0.0",
+    "expo-status-bar": "~55.0.0",
+    "expo-video": "~55.0.0",
+    "react": "19.2.0",
+    "react-native": "0.83.10",
+    "react-native-safe-area-context": "~5.6.2",
+    "react-native-screens": "~4.23.0"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.0",
+    "typescript": "~5.9.2"
+  }
+}

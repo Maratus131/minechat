@@ -1,0 +1,10 @@
+target/
+.m2/
+.env
+.env.prod
+minechat-deploy.tar.gz
+.idea/
+*.iml
+*.log
+.pnpm-store/
+

@@ -1,0 +1,45 @@
+spring:
+  application:
+    name: msrpo-chat
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/chat}
+    username: ${DB_USER:chat}
+    password: ${DB_PASSWORD}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+  elasticsearch:
+    uris: ${ELASTICSEARCH_URL:http://localhost:9200}
+    connection-timeout: 2s
+    socket-timeout: 5s
+  data:
+    elasticsearch:
+      repositories:
+        enabled: false
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 51MB
+  mvc:
+    problemdetails:
+      enabled: true
+server:
+  port: ${PORT:8080}
+  tomcat:
+    max-part-count: 10
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+    issuer: msrpo-chat
+    access-ttl: 1h
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:5173,http://localhost:3000}
+  search:
+    scheduling-enabled: true
+    interval-ms: 3000
+springdoc:
+  swagger-ui:
+    persist-authorization: false

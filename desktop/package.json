@@ -1,0 +1,46 @@
+{
+  "name": "minechat-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Electron-клиент Minechat",
+  "author": "MSRPO",
+  "license": "UNLICENSED",
+  "main": "dist/main.js",
+  "packageManager": "pnpm@11.25.0",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "build:main": "tsc -p tsconfig.json",
+    "build:renderer": "node scripts/build-renderer.mjs",
+    "build": "pnpm build:main && pnpm build:renderer",
+    "start": "electron .",
+    "dev": "pnpm build && pnpm start",
+    "package:dir": "pnpm build && electron-builder --dir",
+    "dist:win": "pnpm build && electron-builder --win nsis --x64",
+    "dist:mac": "pnpm build && electron-builder --mac dmg",
+    "dist:linux": "pnpm build && electron-builder --linux AppImage"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "electron": "45.0.0",
+    "electron-builder": "26.18.0",
+    "typescript": "~6.0.0"
+  },
+  "build": {
+    "appId": "ru.msrpo.minechat",
+    "productName": "Minechat",
+    "asar": true,
+    "npmRebuild": false,
+    "directories": { "output": "release" },
+    "files": ["dist/**/*.js", "renderer/**/*", "package.json"],
+    "win": { "target": ["nsis"] },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "mac": { "target": ["dmg"], "category": "public.app-category.social-networking", "extendInfo": { "NSMicrophoneUsageDescription": "Микрофон нужен для записи голосовых сообщений." } },
+    "linux": { "target": ["AppImage"], "category": "Network" }
+  }
+}

@@ -1,0 +1,20 @@
+{$SITE_ADDRESS} {
+	encode zstd gzip
+
+	request_body {
+		max_size 55MiB
+	}
+
+	@api path /api /api/*
+	handle @api {
+		reverse_proxy backend:8080 {
+			flush_interval -1
+		}
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}

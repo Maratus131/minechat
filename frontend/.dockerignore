@@ -1,0 +1,11 @@
+*
+!Dockerfile.prod
+!Caddyfile
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!index.html
+!tsconfig.json
+!vite.config.ts
+!src/
+!src/**

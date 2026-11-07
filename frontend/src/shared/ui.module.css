@@ -1,0 +1,21 @@
+.brand { display: inline-flex; align-items: center; gap: 12px; font: 26px/1.5 var(--font-pixel); color: var(--text-on-dark); white-space: nowrap; }
+.block { width: 40px; height: 40px; background: linear-gradient(var(--accent) 0 30%, transparent 30%), linear-gradient(90deg, transparent 40%, #35542b 40% 60%, transparent 60%), #373d33; position: relative; flex: none; }
+.block::after { content: ''; position: absolute; width: 8px; height: 8px; background: #626954; left: 4px; top: 16px; }
+.avatar { width: 48px; height: 48px; display: grid; place-items: center; flex: none; overflow: hidden; background: #35542b; color: #f2f3df; border: 2px solid var(--border); box-shadow: inset 1px 1px #e0e6d3, inset -2px -2px #203719; font: 12px/1.4 var(--font-pixel); }
+.avatar img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.status { min-height: 250px; height: 100%; padding: 30px 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; text-align: center; color: var(--text-on-dark); background: var(--chat); }
+.status h2 { font: 16px/1.8 var(--font-pixel); margin: 0; }
+.description { color: var(--muted-on-dark); line-height: 1.7; max-width: 360px; }
+.description p { margin: 0 0 20px; }
+.symbol { display: grid; place-items: center; width: 64px; height: 64px; border: 2px solid var(--border); box-shadow: inset 1px 1px #c2c8b9, inset -2px -2px #232822; font: 20px var(--font-pixel); }
+.empty { background: #35542b; }
+.error { background: #8b332a; }
+.loading { background: var(--panel); color: var(--text); }
+.loader { width: 200px; height: 14px; padding: 4px; background: var(--background); overflow: hidden; }
+.loader::after { content: ''; display: block; height: 100%; width: 30%; background: var(--accent); animation: loading 1.5s ease-in-out infinite alternate; }
+.errorNotice { padding: 12px; border: 2px solid #ac6357; color: #fff1df; background: #65362c; line-height: 1.65; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; font-size: 12px; }
+.errorNotice span { flex: 1 1 180px; }
+.errorNotice button { font-size: 10px; }
+@keyframes loading { to { transform: translateX(230%); } }
+@media (max-width: 700px) { .brand { font-size: 18px; } .status h2 { font-size: 13px; } .status { padding: 24px 16px; } }
+@media (prefers-reduced-motion: reduce) { .loader::after { animation: none; width: 65%; } }
