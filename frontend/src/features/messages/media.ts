@@ -10,3 +10,7 @@ export function mediaType(filename: string) {
   const extension = filename.split('.').at(-1)?.toLowerCase() ?? '';
   return Object.hasOwn(mediaTypes, extension) ? mediaTypes[extension] : undefined;
 }
+
+export function isVoiceFile(filename: string) {
+  return filename.startsWith('voice-') && mediaType(filename)?.kind === 'audio';
+}

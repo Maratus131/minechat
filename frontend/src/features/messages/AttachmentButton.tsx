@@ -3,13 +3,15 @@ import type { Attachment } from '../../api/contracts';
 import { errorMessage } from '../../api/client';
 import { formatSize } from '../../shared/ui';
 import { useSession } from '../auth/Session';
-import { mediaType } from './media';
+import { isVoiceFile, mediaType } from './media';
+import { VoiceMessage } from './VoiceMessage';
 import styles from './messages.module.css';
 
-type Preview = { status: 'idle' | 'loading' } | { status: 'ready'; url: string } | { status: 'error'; message: string };
+type Preview = { status: 'idle' | 'loading' } | { status: 'ready'; url: string; blob: Blob } | { status: 'error'; message: string };
 export function AttachmentButton({ file }: { file: Attachment }) {
   const { api } = useSession();
   const media = mediaType(file.filename);
+  const voice = isVoiceFile(file.filename);
   const container = useRef<HTMLDivElement>(null);
   const blob = useRef<Blob | null>(null);
   const previewUrl = useRef<string | null>(null);
@@ -17,7 +19,7 @@ export function AttachmentButton({ file }: { file: Attachment }) {
   const controller = useRef<AbortController | null>(null);
   const cleanupDownload = useRef<(() => void) | null>(null);
   const mounted = useRef(false);
-  const [nearby, setNearby] = useState(false);
+  const [nearby, setNearby] = useState(() => !('IntersectionObserver' in window));
   const [attempt, setAttempt] = useState(0);
   const [preview, setPreview] = useState<Preview>({ status: 'idle' });
   const [downloading, setDownloading] = useState(false);
@@ -50,7 +52,7 @@ export function AttachmentButton({ file }: { file: Attachment }) {
   }, []);
   useEffect(() => {
     if (!media || !container.current) return;
-    if (!('IntersectionObserver' in window)) { setNearby(true); return; }
+    if (!('IntersectionObserver' in window)) return;
     const observer = new IntersectionObserver((entries) => {
       if (entries.some((entry) => entry.isIntersecting)) { setNearby(true); observer.disconnect(); }
     }, { rootMargin: '300px' });
@@ -64,7 +66,7 @@ export function AttachmentButton({ file }: { file: Attachment }) {
       if (!active || !mounted.current) return;
       if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
       previewUrl.current = URL.createObjectURL(value);
-      setPreview({ status: 'ready', url: previewUrl.current });
+      setPreview({ status: 'ready', url: previewUrl.current, blob: value });
     }).catch((cause: unknown) => {
       if (active && mounted.current && !controller.current?.signal.aborted) setPreview({ status: 'error', message: errorMessage(cause) });
     });
@@ -86,6 +88,17 @@ export function AttachmentButton({ file }: { file: Attachment }) {
     } catch (cause) { if (mounted.current && !controller.current?.signal.aborted) setError(errorMessage(cause)); }
     finally { if (mounted.current) setDownloading(false); }
   }
+  if (voice) return <div ref={container} className={`${styles.attachmentGroup} ${styles.voiceGroup}`}>
+    {preview.status === 'ready'
+      ? <VoiceMessage src={preview.url} blob={preview.blob} sizeBytes={file.sizeBytes}
+          onError={() => setPreview({ status: 'error', message: 'Не удалось воспроизвести голосовое.' })} />
+      : <div className={styles.voicePlaceholder} role="status">{preview.status === 'error' ? preview.message : 'Загрузка голосового…'}</div>}
+    {preview.status === 'error' && <div className={styles.voiceRecovery}>
+      <button type="button" onClick={() => { blob.current = null; setPreview({ status: 'loading' }); setAttempt((value) => value + 1); }}>Повторить</button>
+      <button type="button" onClick={() => void handleDownload()} disabled={downloading}>Скачать запись</button>
+    </div>}
+    {error && <p className={styles.downloadError} role="alert">{error}</p>}
+  </div>;
   return <div ref={container} className={`${styles.attachmentGroup} ${media ? styles.mediaGroup : ''}`}>
     {media && <div className={`${styles.mediaPreview} ${media.kind === 'audio' ? styles.audioPreview : ''}`}>
       {(preview.status === 'idle' || preview.status === 'loading') && <p role="status">{media.kind === 'image' ? 'Загрузка фото…' : media.kind === 'audio' ? 'Загрузка аудио…' : 'Загрузка видео…'}</p>}

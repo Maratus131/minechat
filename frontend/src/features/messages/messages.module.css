@@ -116,3 +116,27 @@
 .selectedFiles li:has(audio) { flex-wrap: wrap; }
 .selectedFiles li > .selectedPreview:has(audio) { width: 100%; flex: 0 0 100%; }
 .selectedPreview > audio { width: 100%; min-width: 0; }
+
+.voiceGroup { width: min(100%, 350px); max-width: 90%; }
+.voicePlayer { display: grid; grid-template-columns: 48px minmax(0, 1fr); align-items: center; gap: 12px; min-width: 0; padding: 11px 13px; background: var(--message); border: 2px solid var(--border); box-shadow: var(--bevel); }
+.mine .voicePlayer { background: var(--mine); }
+.voicePlayer > audio { display: none; }
+.voicePlay { width: 48px; height: 48px; min-height: 48px; padding: 12px; flex: none; background: var(--accent); color: var(--text); border-radius: 50%; box-shadow: none; }
+.voicePlay:hover:not(:disabled) { background: #9dc862; }
+.voicePlay svg { display: block; width: 23px; height: 23px; fill: currentColor; }
+.voiceBody { min-width: 0; display: grid; gap: 1px; }
+.voiceTimeline { position: relative; height: 35px; min-width: 0; }
+.voiceBars { height: 100%; display: flex; align-items: center; gap: 2px; pointer-events: none; }
+.voiceBars > span { min-width: 1px; flex: 1; background: #9eaf88; border-radius: 1px; }
+.voiceBars > .voiceBarPlayed { background: #3f681d; }
+.voiceTimeline > input { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; margin: 0; padding: 0; opacity: 0; cursor: pointer; touch-action: pan-y; }
+.voiceTimeline:focus-within { outline: 2px solid #3f681d; outline-offset: 3px; }
+.voiceMeta { color: #486435; font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.voiceError { grid-column: 1 / -1; font-size: 11px; color: #72231a; margin: 0; }
+.voicePlaceholder { padding: 16px; background: var(--message); color: var(--muted); border: 2px solid var(--border); font-size: 11px; }
+.voiceRecovery { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+.voiceRecovery button { min-height: 32px; padding: 6px 8px; font-size: 9px; }
+.selectedFiles li > .selectedVoice { width: 100%; flex: 1; }
+.selectedVoice > .voicePlayer { border: 0; padding: 3px; box-shadow: none; }
+.selectedFiles .voicePlay { min-width: 44px; width: 44px; height: 44px; min-height: 44px; padding: 11px; }
+@media (max-width: 360px) { .voicePlayer { grid-template-columns: 44px minmax(0, 1fr); gap: 9px; padding: 9px; } .voicePlay { width: 44px; height: 44px; min-height: 44px; padding: 10px; } .voiceBars { gap: 1px; } }

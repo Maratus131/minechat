@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { mediaType } from './media';
+import { isVoiceFile, mediaType } from './media';
+import { VoiceMessage } from './VoiceMessage';
 import styles from './messages.module.css';
 
 export function SelectedMedia({ file }: { file: File }) {
@@ -19,6 +20,7 @@ export function SelectedMedia({ file }: { file: File }) {
     };
   }, [file, media]);
   if (!media) return null;
+  if (isVoiceFile(file.name)) return <span className={`${styles.selectedPreview} ${styles.selectedVoice}`}><VoiceMessage blob={file} sizeBytes={file.size} /></span>;
   return <span className={styles.selectedPreview}>{media.kind === 'image'
     ? <img ref={image} alt={`Выбрано: ${file.name}`} />
     : media.kind === 'audio'

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, AppState, Image, StyleSheet, Text, View } from 'react-native';
+import { Alert, AppState, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { useEvent } from 'expo';
@@ -20,6 +20,7 @@ function Video({ uri }: { uri: string }) {
 function FileView({ file }: { file: Attachment }) {
   const { api } = useSession();
   const kind = mediaType(file.filename);
+  const voice = kind === 'audio' && file.filename.startsWith('voice-');
   const [failed, setFailed] = useState(false);
   const [shareState, setShareState] = useState<'idle' | 'loading'>('idle');
   const [error, setError] = useState('');
@@ -29,10 +30,10 @@ function FileView({ file }: { file: Attachment }) {
     {kind && preview.isPending && <Text style={s.ink}>Загрузка медиа…</Text>}
     {kind === 'image' && preview.data && !failed && <Image accessibilityLabel={file.filename} source={{ uri: preview.data }} resizeMode="contain" style={styles.media} onError={() => setFailed(true)} />}
     {kind === 'video' && preview.data && <Video uri={preview.data} />}
-    {kind === 'audio' && preview.data && <AudioMessage uri={preview.data} />}
+    {kind === 'audio' && preview.data && <AudioMessage uri={preview.data} sizeBytes={file.sizeBytes} />}
     {(failed || preview.error) && <Text style={s.ink}>Превью недоступно. Файл можно сохранить.</Text>}
-    <Text style={s.ink}>{file.filename} · {(file.sizeBytes / 1024).toFixed(1)} КиБ</Text>
-    <Button title={shareState === 'loading' ? 'Загрузка…' : 'Сохранить / поделиться'} disabled={shareState === 'loading'} onPress={() => { void share(); }} />
+    {!voice && <Text style={s.ink}>{file.filename} · {(file.sizeBytes / 1024).toFixed(1)} КиБ</Text>}
+    {voice ? <Pressable accessibilityRole="button" accessibilityLabel="Сохранить или поделиться голосовым" accessibilityState={{ disabled: shareState === 'loading' }} disabled={shareState === 'loading'} onPress={() => { void share(); }} style={styles.shareVoice}><Text style={styles.shareVoiceText}>{shareState === 'loading' ? 'Загрузка…' : '↓ Сохранить'}</Text></Pressable> : <Button title={shareState === 'loading' ? 'Загрузка…' : 'Сохранить / поделиться'} disabled={shareState === 'loading'} onPress={() => { void share(); }} />}
     {error && <Notice text={error} />}
   </View>;
 }
@@ -55,4 +56,6 @@ const styles = StyleSheet.create({
   mine: { backgroundColor: colors.mine, alignSelf: 'flex-end' }, incoming: { backgroundColor: colors.incoming, alignSelf: 'flex-start' },
   name: { color: '#425c24', fontFamily: 'RobotoMono_400Regular', fontSize: 12 }, time: { fontFamily: 'RobotoMono_400Regular', color: '#555c50', fontSize: 10 },
   media: { width: 250, maxWidth: '100%', height: 180, backgroundColor: colors.chat }, file: { gap: 6, maxWidth: '100%' },
+  shareVoice: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-end', paddingHorizontal: 8 },
+  shareVoiceText: { color: '#425c24', fontFamily: 'RobotoMono_400Regular', fontSize: 10 },
 });
