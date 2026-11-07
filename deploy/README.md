@@ -1,6 +1,6 @@
 # Ручной деплой в Yandex Cloud
 
-Одна Ubuntu 24.04 VM, x86-64, минимум 4 ГБ RAM. Java, React, PostgreSQL и Elasticsearch 9.2.8 остаются в проекте. Это одно окружение; автоматический деплой GitHub Actions пока не подключён.
+Одна Ubuntu 24.04 VM, x86-64, минимум 4 ГБ RAM. Java, React, PostgreSQL и Elasticsearch 9.2.8 остаются в проекте. Это одно окружение. GitHub Actions обновляет его после push в `master`; первичная установка описана ниже.
 
 ## 1. Подключение и сеть
 
@@ -30,7 +30,7 @@ sudo sh deploy/deploy.sh
 
 Пустой репозиторий сначала нужно наполнить кодом, включая `compose.prod.yaml`, `deploy/`, `frontend/Dockerfile.prod` и `frontend/Caddyfile`. Для приватного репозитория используйте настроенный SSH deploy key или передачу архивом; не вставляйте GitHub-токен в URL.
 
-Дальнейшее обновление через GitHub на VM: `git pull --ff-only`, затем `sudo sh deploy/deploy.sh`. Публикация кода сама по себе пока не запускает серверное обновление.
+При настроенном GitHub Actions обычного push в `master` достаточно для обновления сервера. Ручное обновление на VM также возможно: `git pull --ff-only`, затем `sudo sh deploy/deploy.sh`.
 
 В PowerShell из корня проекта создайте архив исходников. Локальные `.env`, зависимости и сборки не передаются:
 
@@ -104,7 +104,25 @@ sudo docker compose -p minechat-prod --env-file .env.prod -f compose.prod.yaml e
 
 Передайте новый архив, распакуйте его в ту же папку и повторите `sudo sh deploy/deploy.sh`. `.env.prod` и тома при обычном обновлении сохраняются. Не выполняйте `docker compose down -v`: это удаляет данные.
 
-## Основания и проверка
+## Автоматическое обновление из GitHub
+
+Workflow `.github/workflows/deploy.yml` запускается на push в `master` и вручную через GitHub → Actions. Изменения в других ветках сервер не обновляют. Повторные деплои выполняются последовательно; автоматическая сборка и запуск занимают несколько минут, обновление не мгновенное.
+
+GitHub хранит `DEPLOY_SSH_KEY` и `DEPLOY_KNOWN_HOSTS` в Actions Secrets. Это отдельный ключ деплоя, не личный SSH-ключ администратора. Его запись в `authorized_keys` разрешает только forced-command `/usr/local/bin/minechat-deploy`; интерактивный shell и перенаправление портов запрещены. Скрипт проверяет формат commit SHA и его принадлежность ветке `master`, обновляет код fast-forward и запускает существующий `deploy/deploy.sh` с серверной сборкой образов.
+
+Для первичной установки нужен публичный ключ GitHub Actions в файле на VM:
+
+```sh
+sudo sh deploy/install-ci.sh /path/to/actions-key.pub
+```
+
+Приватный ключ передавайте только в GitHub Actions Secret `DEPLOY_SSH_KEY`, не в Git и не в сообщения. В `DEPLOY_KNOWN_HOSTS` должна быть заранее проверенная запись SSH host key сервера; получение через `ssh-keyscan` без сверки не заменяет проверку подлинности.
+
+`.env.prod` и постоянные тома PostgreSQL, Elasticsearch и Caddy сохраняются. Контейнеры приложения могут ненадолго перезапуститься. Автоматического отката миграций базы нет; перед изменениями схемы делайте резервные копии. Участники с правом push в `master` должны считаться доверенными: код этой ветки исполняется на сервере.
+
+Результат конкретного обновления смотрите в GitHub → Actions → Deploy Minechat. Зелёный статус означает, что команда деплоя завершилась успешно и backend ответил на проверочный запрос. При красном статусе проверьте лог; не удаляйте тома для исправления ошибки.
+
+## Источники
 
 - Docker: https://docs.docker.com/engine/install/ubuntu/
 - Elasticsearch: https://www.elastic.co/docs/deploy-manage/deploy/self-managed/vm-max-map-count

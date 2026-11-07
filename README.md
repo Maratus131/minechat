@@ -38,7 +38,7 @@ Access-токен хранится только в памяти: после пе
 
 ## Запуск через Docker
 
-Для ручного размещения веб-клиента и backend с PostgreSQL и Elasticsearch на Ubuntu VM используйте [инструкцию серверного деплоя](deploy/README.md) и отдельный `compose.prod.yaml`. Автоматический деплой из GitHub пока не подключён.
+Для размещения веб-клиента и backend с PostgreSQL и Elasticsearch на Ubuntu VM используйте [инструкцию серверного деплоя](deploy/README.md) и отдельный `compose.prod.yaml`. После первичной настройки GitHub Actions пуши в `master` автоматически обновляют сервер.
 
 Нужен запущенный Docker Desktop в режиме Linux containers. Из корня проекта в PowerShell:
 
