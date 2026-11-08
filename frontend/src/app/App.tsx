@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, Navigate, NavLink, Outlet, Route, Routes, useLocation, useMatch, useNavigate, useSearchParams } from 'react-router';
 import { StatusPanel } from '../shared/ui';
+import { Icon } from '../shared/Icon';
 import { UserAvatar } from '../features/profile/UserAvatar';
 import { ProfilePage } from '../features/profile/ProfilePage';
 import { AuthPage } from '../features/auth/AuthPage';
@@ -29,7 +30,9 @@ function ChatLayout() {
   const groupMatch = useMatch('/groups/:id');
   const people = !!useMatch('/people');
   const profile = !!useMatch('/profile');
-  const creating = !!useMatch('/channels/new') || !!useMatch('/groups/new');
+  const newChannel = useMatch('/channels/new');
+  const newGroup = useMatch('/groups/new');
+  const creating = !!newChannel || !!newGroup;
   const id = chatMatch?.params.id || (!creating ? channelMatch?.params.id || groupMatch?.params.id : undefined);
   const location = useLocation();
   const navigate = useNavigate();
@@ -57,15 +60,19 @@ function ChatLayout() {
   return <div className={`${styles.app} ${hasDetail ? styles.withDetail : ''} ${id || creating ? styles.conversationScreen : ''}`}>
     <nav className={styles.rail} aria-label="Разделы чатов">
       <NavigationMenu />
-      <div className={styles.categories}>{([{ value: 'all', label: 'Все', icon: '▤' }, { value: 'personal', label: 'Личные', icon: '▢' }, { value: 'groups', label: 'Группы', icon: '▥' }, { value: 'channels', label: 'Каналы', icon: '▣' }] as const).map((item) => <button key={item.value} aria-pressed={filter === item.value} onClick={() => handleFilter(item.value)}><span aria-hidden="true">{item.icon}</span>{item.label}</button>)}</div>
+      <div className={styles.categories}>{([{ value: 'all', label: 'Все чаты', icon: 'chats' }, { value: 'personal', label: 'Личные', icon: 'profile' }, { value: 'groups', label: 'Группы', icon: 'people' }, { value: 'channels', label: 'Каналы', icon: 'channel' }] as const).map((item) => <button key={item.value} aria-pressed={filter === item.value} onClick={() => handleFilter(item.value)}><Icon name={item.icon} />{item.label}</button>)}</div>
       <Link className={styles.railProfile} to="/profile" aria-label={`Профиль: ${user.displayName}`}><UserAvatar user={user} /><span>Профиль</span></Link>
     </nav>
     {hasDetail && connection !== 'live' && <div className={styles.detailConnection} role="status">{status}</div>}
     <main className={styles.workspace}>
       <aside className={styles.sidebar} aria-label={people ? 'Люди и поиск' : 'Чаты и поиск'}>
         <header className={styles.listHeader}>
+          <div className={styles.brandRow}>
           <div className={styles.mobileMenu}><NavigationMenu /></div>
-          <div className={styles.searchField}><label className="srOnly" htmlFor="global-search">Найти людей и каналы</label><input ref={input} id="global-search" type="search" maxLength={101} value={text} onChange={(event) => handleSearch(event.target.value)} placeholder="Поиск людей и каналов" autoCapitalize="none" spellCheck={false} autoFocus={params.has('search')} />{searching && <button aria-label="Закрыть поиск" onClick={() => { handleSearch(''); input.current?.focus(); }}>×</button>}</div>
+          <span className={styles.brand}>MINECHAT</span>
+          <NavigationMenu create />
+          </div>
+          <div className={styles.searchField}><Icon name="search" /><label className="srOnly" htmlFor="global-search">Найти людей и каналы</label><input ref={input} id="global-search" type="search" maxLength={101} value={text} onChange={(event) => handleSearch(event.target.value)} placeholder="Поиск людей и каналов" autoCapitalize="none" spellCheck={false} autoFocus={params.has('search')} />{searching && <button aria-label="Закрыть поиск" onClick={() => { handleSearch(''); input.current?.focus(); }}><Icon name="close" /></button>}</div>
         </header>
         {connection !== 'live' && <div className={styles.connection} role="status">{status}</div>}
         {!people && <div className={styles.mobileFilters} role="group" aria-label="Категории чатов">{([{ value: 'all', label: 'Все' }, { value: 'personal', label: 'Личные' }, { value: 'groups', label: 'Группы' }, { value: 'channels', label: 'Каналы' }] as const).map((item) => <button key={item.value} aria-pressed={filter === item.value} onClick={() => handleFilter(item.value)}>{item.label}</button>)}</div>}
@@ -73,7 +80,7 @@ function ChatLayout() {
       </aside>
       <div className={styles.detail}><Outlet /></div>
     </main>
-    <nav className={styles.bottomTabs} aria-label="Основная навигация"><NavLink to="/people"><span aria-hidden="true">♙</span>Люди</NavLink><NavLink to="/chats"><span aria-hidden="true">▤</span>Чаты</NavLink><NavLink to="/profile"><span aria-hidden="true">▢</span>Профиль</NavLink></nav>
+    <nav className={styles.bottomTabs} aria-label="Основная навигация"><NavLink to="/people"><Icon name="people" />Люди</NavLink><NavLink to="/chats"><Icon name="chats" />Чаты</NavLink><NavLink to="/profile"><Icon name="profile" />Профиль</NavLink></nav>
   </div>;
 }
 

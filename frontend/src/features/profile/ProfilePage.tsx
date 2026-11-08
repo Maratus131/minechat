@@ -1,6 +1,5 @@
 import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router';
 import type { Profile } from '../../api/contracts';
 import { ErrorNotice } from '../../shared/ui';
 import { useAuth, useSession } from '../auth/Session';
@@ -19,7 +18,6 @@ export function ProfilePage() {
       {profile.isPending && <p role="status">Загрузка профиля…</p>}
       {profile.isError && <ErrorNotice error={profile.error} retry={() => void profile.refetch()} />}
       {profile.data && <ProfileEditor profile={profile.data} />}
-      <div className={styles.actions}><Link className="button" to="/chats?search=1">Найти людей и каналы</Link><Link className="button primary" to="/channels/new">+ Новый канал</Link></div>
       <h2 className={styles.section}>Сеанс</h2>
       <p>Вход действует до завершения сеанса или перезагрузки страницы.</p>
       <button onClick={signOut}>Выйти из аккаунта</button>

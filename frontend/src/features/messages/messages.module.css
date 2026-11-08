@@ -140,3 +140,46 @@
 .selectedVoice > .voicePlayer { border: 0; padding: 3px; box-shadow: none; }
 .selectedFiles .voicePlay { min-width: 44px; width: 44px; height: 44px; min-height: 44px; padding: 11px; }
 @media (max-width: 360px) { .voicePlayer { grid-template-columns: 44px minmax(0, 1fr); gap: 9px; padding: 9px; } .voicePlay { width: 44px; height: 44px; min-height: 44px; padding: 10px; } .voiceBars { gap: 1px; } }
+/* Compact message controls keep the writing area available on every screen. */
+.chatHeader { gap: 10px; min-height: 72px; }
+.chatHeader .back { display: none; }
+.peerName { gap: 4px; }
+.searchToggle { min-width: 48px; width: 48px; padding: 10px; flex: none; }
+.searchToggle[aria-pressed='true'] { background: var(--mine); }
+.composer { padding: 10px 10px 8px; }
+.composerRow { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 8px; }
+.composerRow textarea { flex: 1; width: 0; min-width: 80px; min-height: 48px; max-height: 150px; resize: vertical; }
+.composerRow .attachButton { width: 48px; min-width: 48px; padding: 10px; }
+.composerRow .sendButton { min-width: 48px; min-height: 48px; padding: 10px 12px; font: 600 12px/1.5 var(--font-body); }
+.composerHint { margin-top: 7px; font-size: 10px; }
+.voiceRecorder { display: flex; align-items: center; gap: 8px; margin: 0; flex: none; }
+.voiceRecorder button { min-height: 48px; padding: 10px; font: 12px/1.5 var(--font-body); }
+.voiceRecorder:not([data-active='true']) button { width: 48px; }
+.voiceRecorder[data-active='true'] { flex: 1 0 100%; order: 4; padding-top: 4px; }
+.voiceRecorder > span { font-size: 12px; flex: 1; }
+.voiceRecorder > p { flex-basis: 100%; margin: 4px 0 0; }
+.messageActions { position: absolute; top: 0; left: 2px; z-index: 1; }
+.mine .messageActions { left: auto; right: 2px; }
+.messageActions summary { display: flex; align-items: center; justify-content: center; list-style: none; width: 44px; height: 44px; margin-top: 40px; cursor: pointer; color: var(--muted-on-dark); }
+.messageActions summary::-webkit-details-marker { display: none; }
+.messageActions summary:hover { color: var(--text-on-dark); background: #ffffff12; }
+.messageActions[open] { z-index: 5; }
+.messageActions > button { position: absolute; top: 78px; left: 0; white-space: nowrap; min-height: 44px; padding: 10px; font: 12px/1.5 var(--font-body); box-shadow: var(--bevel), 2px 3px 0 #0004; }
+.mine .messageActions > button { left: auto; right: 0; }
+@media (max-width: 1150px) { .sendButton > span { display: none; } }
+@media (max-width: 700px) {
+  .chatHeader { padding: 10px; gap: 8px; min-height: 68px; }
+  .peerAvatar { display: inline; }
+  .peerAvatar > span { width: 40px; height: 40px; }
+  .chatHeader .back { display: inline-flex; min-width: 40px; width: 40px; min-height: 44px; }
+  .chatHeader .searchToggle { min-width: 44px; width: 44px; min-height: 44px; padding: 9px; }
+  .history { padding: 14px 10px; }
+  .composer { padding: 8px; }
+  .composerRow { gap: 6px; }
+  .composerRow textarea { resize: none; min-width: 60px; font-size: 13px; }
+  .composerRow .attachButton, .voiceRecorder:not([data-active='true']) button, .composerRow .sendButton { width: 44px; min-width: 44px; padding: 9px; }
+  .composerHint { font-size: 9px; }
+  .voiceRecorder[data-active='true'] button { min-height: 44px; }
+  .sendButton > span { display: none; }
+}
+@media (max-width: 360px) { .chatHeader { gap: 6px; padding-inline: 8px; } .peerName strong { font-size: 12px; } .peerName span { font-size: 10px; } .peerAvatar { display: none; } }

@@ -1,3 +1,4 @@
+import { Icon } from '../../shared/Icon';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { errorMessage } from '../../api/client';
@@ -22,11 +23,11 @@ function GroupView({ id }: { id: string }) {
   const data = group.data;
   return <section className={styles.chat} aria-label={`Группа ${data.title}`}>
     <header className={styles.chatHeader}>
-      <Link className={`button iconButton ${styles.back}`} to="/chats" aria-label="Назад к чатам">‹</Link>
+      <Link className={`button iconButton ${styles.back}`} to="/chats" aria-label="Назад к чатам"><Icon name="back" /></Link>
       <span className={styles.peerAvatar}><Avatar name={data.title} /></span>
       <div className={styles.peerName}><strong>▥ {data.title}</strong><span>{data.memberCount} участников</span></div>
-      <button className={styles.searchToggle} onClick={() => setPanel(panel === 'members' ? 'chat' : 'members')} aria-pressed={panel === 'members'}>{panel === 'members' ? 'Чат' : 'Участники'}</button>
-      <button className={styles.searchToggle} onClick={() => setPanel(panel === 'search' ? 'chat' : 'search')} aria-pressed={panel === 'search'}>{panel === 'search' ? 'Чат' : 'Поиск'}</button>
+      <button className={styles.searchToggle} onClick={() => setPanel(panel === 'members' ? 'chat' : 'members')} aria-label={panel === 'members' ? 'Закрыть участников' : 'Участники группы'} title="Участники группы" aria-pressed={panel === 'members'}><Icon name={panel === 'members' ? 'close' : 'people'} /></button>
+      <button className={styles.searchToggle} onClick={() => setPanel(panel === 'search' ? 'chat' : 'search')} aria-label={panel === 'search' ? 'Закрыть поиск' : 'Поиск в группе'} title="Поиск в группе" aria-pressed={panel === 'search'}><Icon name={panel === 'search' ? 'close' : 'search'} /></button>
     </header>
     {panel === 'members' ? <GroupMembers group={data} /> : panel === 'search' ? <SearchMessages id={id} /> : <MessageHistory id={id} sentVersion={sentVersion} canModerate={data.viewerRole === 'OWNER' || data.viewerRole === 'ADMIN'} canDeleteOwn={data.viewerRole !== 'READER'} />}
     {data.viewerRole === 'READER' ? <div className={styles.readOnly}>Вы можете читать сообщения этой группы.</div> : <Composer id={id} onSent={() => { setSentVersion((value) => value + 1); setPanel('chat'); }} />}

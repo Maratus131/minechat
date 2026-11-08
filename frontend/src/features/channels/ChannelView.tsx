@@ -1,3 +1,4 @@
+import { Icon } from '../../shared/Icon';
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router';
@@ -41,10 +42,10 @@ function ChannelView({ id }: { id: string }) {
   const canPost = owner || data.viewerRole === 'ADMIN';
   return <section className={styles.chat} aria-label={`Канал ${data.title}`}>
     <header className={styles.chatHeader}>
-      <Link className={`button iconButton ${styles.back}`} to="/chats" aria-label="Назад к чатам">‹</Link>
+      <Link className={`button iconButton ${styles.back}`} to="/chats" aria-label="Назад к чатам"><Icon name="back" /></Link>
       <span className={styles.peerAvatar}><Avatar name={data.title} /></span><div className={styles.peerName}><strong>▣ {data.title}</strong><span>@{data.username} · {data.subscriberCount} подписчиков</span></div>
-      {canPost && <button className={styles.searchToggle} onClick={() => setPanel(panel === 'members' ? 'chat' : 'members')} aria-pressed={panel === 'members'}>{panel === 'members' ? 'Канал' : 'Участники'}</button>}
-      <button className={styles.searchToggle} onClick={() => setPanel(panel === 'search' ? 'chat' : 'search')} aria-pressed={panel === 'search'}>{panel === 'search' ? 'Канал' : 'Поиск'}</button>
+      {canPost && <button className={styles.searchToggle} onClick={() => setPanel(panel === 'members' ? 'chat' : 'members')} aria-label={panel === 'members' ? 'Закрыть участников' : 'Участники канала'} title="Участники канала" aria-pressed={panel === 'members'}><Icon name={panel === 'members' ? 'close' : 'people'} /></button>}
+      <button className={styles.searchToggle} onClick={() => setPanel(panel === 'search' ? 'chat' : 'search')} aria-label={panel === 'search' ? 'Закрыть поиск' : 'Поиск в канале'} title="Поиск в канале" aria-pressed={panel === 'search'}><Icon name={panel === 'search' ? 'close' : 'search'} /></button>
     </header>
     <div className={styles.channelInfo}>{data.description && <p>{data.description}</p>}<div className={styles.channelActions}>
       <span>{owner ? 'Ваш канал' : data.viewerRole === 'ADMIN' ? 'Вы администратор' : data.subscribed ? 'Вы подписаны' : 'Открытый канал'}</span>

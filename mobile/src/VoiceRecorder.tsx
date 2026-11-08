@@ -5,6 +5,7 @@ import { errorMessage, type PickedFile } from './api';
 import { discardFile, stageFile } from './files';
 import { audioTime } from './AudioMessage';
 import { Button, Notice, s } from './ui';
+import { IconButton } from './Icon';
 
 export function VoiceRecorder({ disabled, onRecorded, onBusyChange }: {
   disabled: boolean; onRecorded: (file: PickedFile) => void; onBusyChange: (busy: boolean) => void;
@@ -70,14 +71,14 @@ export function VoiceRecorder({ disabled, onRecorded, onBusyChange }: {
       }
     }
   }
-  return <View style={{ gap: 8 }}>
-    {phase === 'idle' ? <Button title="Голосовое" disabled={disabled} onPress={() => { void start(); }} /> : <>
+  return <View style={[{ gap: 8 }, phase !== 'idle' && s.fill]}>
+    {phase === 'idle' ? <IconButton icon="mic" label="Записать голосовое" disabled={disabled} onPress={() => { void start(); }} /> : <>
       <Text style={s.text}>{phase === 'starting' ? 'Подготовка микрофона…' : phase === 'stopping' ? 'Сохранение записи…' : `Запись ${audioTime(status.durationMillis / 1000)} / 2:00`}</Text>
       <View style={s.row}>
         <Button title="Остановить" disabled={phase !== 'recording'} onPress={() => { void stop(true); }} />
         <Button title="Отменить запись" disabled={phase === 'stopping'} onPress={() => { cancelled.current = true; void stop(false); }} />
       </View>
     </>}
-    {!!error && <Notice text={error} />}
+    {!!error && <View style={{ width: 220, position: 'absolute', bottom: 56, right: 0, backgroundColor: '#252c23', borderWidth: 1, borderColor: '#88b548' }}><Notice text={error} /></View>}
   </View>;
 }

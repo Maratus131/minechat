@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -9,13 +9,16 @@ import { discardFile, mediaType, stageFile } from './files';
 import { VoiceRecorder } from './VoiceRecorder';
 import { AudioMessage } from './AudioMessage';
 import { acceptMessage } from './history';
-import { Button, Field, Notice, s } from './ui';
+import { Button, colors, Notice, s } from './ui';
+import { IconButton } from './Icon';
+import { ActionSheet } from './ActionSheet';
 
 export function Composer({ id }: { id: string }) {
   const { api } = useSession(); const cache = useQueryClient();
   const [text, setText] = useState(''); const [files, setFiles] = useState<PickedFile[]>([]);
   const [pickError, setPickError] = useState(''); const [picking, setPicking] = useState(false);
   const [recording, setRecording] = useState(false);
+  const [attachmentsOpen, setAttachmentsOpen] = useState(false);
   const owned = useRef<PickedFile[]>([]); const mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; owned.current.forEach((file) => { void discardFile(file.uri); }); }; }, []);
   function updateFiles(next: PickedFile[]) { owned.current = next; setFiles(next); }
@@ -49,11 +52,28 @@ export function Composer({ id }: { id: string }) {
     finally { if (mounted.current) setPicking(false); }
   }
   const busy = send.isPending || picking || recording;
-  return <View style={s.content}>
+  return <View style={styles.composer}>
     {!!files.length && <ScrollView horizontal style={{ maxHeight: 200 }} keyboardShouldPersistTaps="handled">{files.map((file) => <View key={file.uri} style={s.content}>{!(mediaType(file.name) === 'audio' && file.name.startsWith('voice-')) && <Text style={s.text}>{file.name}</Text>}{mediaType(file.name) === 'audio' && !recording && !send.isPending && <AudioMessage uri={file.uri} sizeBytes={file.size} />}<Button title="Убрать" disabled={busy} onPress={() => { void discardFile(file.uri); updateFiles(files.filter((current) => current.uri !== file.uri)); }} /></View>)}</ScrollView>}
-    <VoiceRecorder disabled={send.isPending || picking || files.length >= 5} onBusyChange={setRecording} onRecorded={(file) => updateFiles([...owned.current, file])} />
-    <Field label="Сообщение" value={text} onChangeText={setText} multiline maxLength={4096} editable={!busy} style={{ maxHeight: 120 }} />
-    <View style={[s.row, { flexWrap: 'wrap' }]}><Button title="Медиа" disabled={busy} onPress={() => { void pick(true); }} /><Button title="Файл" disabled={busy} onPress={() => { void pick(false); }} /><View style={s.fill}><Button title={send.isPending ? 'Отправка…' : 'Отправить'} disabled={busy || !text.trim() && !files.length} onPress={() => send.mutate()} /></View></View>
+    <View style={styles.row}>
+      {!recording && <><IconButton icon="attach" label="Прикрепить фото, видео или файл" disabled={busy || files.length >= 5} onPress={() => setAttachmentsOpen(true)} />
+        <TextInput accessibilityLabel="Сообщение" placeholder="Сообщение…" placeholderTextColor="#aeb7a3" value={text} onChangeText={setText} multiline maxLength={4096} editable={!busy} style={styles.input} />
+      </>}
+      <VoiceRecorder disabled={send.isPending || picking || files.length >= 5} onBusyChange={setRecording} onRecorded={(file) => updateFiles([...owned.current, file])} />
+      {!recording && <IconButton icon="send" label={send.isPending ? 'Отправка сообщения…' : 'Отправить сообщение'} primary disabled={busy || !text.trim() && !files.length} onPress={() => send.mutate()} />}
+    </View>
+    {picking && <Text style={styles.hint}>Подготовка вложений…</Text>}
+    {!!files.length && <Text style={styles.hint}>Вложений: {files.length} из 5 · до 10 МиБ каждый</Text>}
     {(pickError || send.error) && <Notice text={pickError || errorMessage(send.error)} />}
+    <ActionSheet title="Прикрепить" visible={attachmentsOpen} onClose={() => setAttachmentsOpen(false)} actions={[
+      { title: 'Фото или видео', onPress: () => { void pick(true); } },
+      { title: 'Файл', onPress: () => { void pick(false); } },
+    ]} />
   </View>;
 }
+
+const styles = StyleSheet.create({
+  composer: { padding: 8, gap: 8, backgroundColor: colors.panel, borderTopWidth: 2, borderTopColor: '#171e14' },
+  row: { flexDirection: 'row', gap: 4, alignItems: 'flex-end' },
+  input: { flex: 1, minWidth: 0, minHeight: 48, maxHeight: 120, paddingHorizontal: 10, paddingVertical: 12, color: colors.incoming, backgroundColor: colors.chat, borderWidth: 2, borderColor: '#171e14', fontFamily: 'RobotoMono_400Regular', fontSize: 14 },
+  hint: { fontFamily: 'RobotoMono_400Regular', fontSize: 10, color: '#50584a' },
+});

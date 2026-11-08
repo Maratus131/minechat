@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Icon } from '../../shared/Icon';
 import styles from './messages.module.css';
 
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -101,8 +102,8 @@ export function VoiceRecorder({ disabled, onActiveChange, onReady }: {
     }
   }
 
-  return <div className={styles.voiceRecorder}>
-    {status === 'idle' ? <button type="button" disabled={disabled} onClick={() => void start()}>Микрофон</button>
+  return <div className={styles.voiceRecorder} data-active={status !== 'idle' || !!error}>
+    {status === 'idle' ? <button type="button" aria-label="Записать голосовое сообщение" title="Записать голосовое сообщение" disabled={disabled} onClick={() => void start()}><Icon name="mic" /></button>
       : <>
         <span role="status">{status === 'requesting' ? 'Разрешите доступ к микрофону…' : `Запись ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')} / 2:00`}</span>
         {status === 'recording' && <button type="button" onClick={() => stop(false)}>Завершить запись</button>}

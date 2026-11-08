@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { FlatList, KeyboardAvoidingView, Platform, Text, View } from 'react-native';
+import { BackHandler, FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSession } from '../../src/session';
 import { acceptMessage, recoverHistory, useHistory } from '../../src/history';
 import { errorMessage } from '../../src/api';
-import { Button, colors, Label, Notice, s, Title } from '../../src/ui';
+import { Button, colors, Label, Notice, s } from '../../src/ui';
+import { IconButton } from '../../src/Icon';
+import { ActionSheet, type SheetAction } from '../../src/ActionSheet';
 import { MessageItem } from '../../src/MessageItem';
 import { Composer } from '../../src/Composer';
 import { SearchMessages } from '../../src/SearchMessages';
@@ -25,6 +27,12 @@ function Chat({ id, kind, title, peer }: { id: string; kind: 'channel' | 'group'
   const isChannel = kind === 'channel';
   const isGroup = kind === 'group';
   const [search, setSearch] = useState(false);
+  const [actionsOpen, setActionsOpen] = useState(false);
+  useEffect(() => {
+    if (!search) return;
+    const listener = BackHandler.addEventListener('hardwareBackPress', () => { setSearch(false); return true; });
+    return () => listener.remove();
+  }, [search]);
   const recoveryRequest = useRef<AbortController | null>(null);
   const [recovery, setRecovery] = useState<{ status: 'idle' | 'syncing' } | { status: 'error'; message: string }>({ status: 'idle' });
   useEffect(() => () => recoveryRequest.current?.abort(), [id]);
@@ -52,18 +60,18 @@ function Chat({ id, kind, title, peer }: { id: string; kind: 'channel' | 'group'
     void cache.invalidateQueries({ queryKey: ['message-search', id] });
   } });
   const messages = [...(history.data?.items ?? [])].reverse();
+  const actions: SheetAction[] = [{ title: search ? 'Закрыть поиск' : 'Поиск сообщений', onPress: () => setSearch(!search) }];
+  if (group.data || channel.data && canModerate) actions.push({ title: isGroup ? 'Участники и роли' : 'Подписчики и роли', onPress: () => router.push({ pathname: '/members/[id]', params: { id, kind } }) });
+  if (channel.data && channel.data.owner.id !== auth?.user.id) actions.push({ title: subscription.isPending ? 'Подождите…' : channel.data.subscribed ? 'Отписаться от канала' : 'Подписаться на канал', disabled: subscription.isPending, onPress: () => subscription.mutate() });
+  const subtitle = group.data ? `${group.data.memberCount} участников · ${role === 'READER' ? 'Только чтение' : 'Группа'}` : channel.data ? `${channel.data.subscriberCount} подписчиков · Канал` : isChannel ? 'Канал' : isGroup ? 'Группа' : 'Личный чат';
   return <KeyboardAvoidingView style={s.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-    <View style={s.content}><View style={s.row}><Button title="Назад" onPress={() => router.canGoBack() ? router.back() : router.replace('/')} />{peer && <Avatar user={peer} />}<View style={s.fill}><Title>{channel.data?.title || group.data?.title || title}</Title></View><Button title={search ? 'Закрыть' : 'Поиск'} onPress={() => setSearch(!search)} /></View>
+    <View style={styles.header}><IconButton icon="back" label="Назад к чатам" onPress={() => router.canGoBack() ? router.back() : router.replace('/')} />{peer && <Avatar user={peer} size={36} />}<View style={styles.headerText}><Text accessibilityRole="header" numberOfLines={1} style={styles.title}>{channel.data?.title || group.data?.title || title}</Text><Text numberOfLines={1} style={styles.subtitle}>{subtitle}</Text></View><IconButton icon={search ? 'close' : 'more'} label={search ? 'Закрыть поиск' : 'Действия чата'} onPress={() => search ? setSearch(false) : setActionsOpen(true)} /></View>
+    <ActionSheet title={channel.data?.title || group.data?.title || title} visible={actionsOpen} onClose={() => setActionsOpen(false)} actions={actions} description={channel.data ? `@${channel.data.username}${channel.data.description ? `\n${channel.data.description}` : ''}` : undefined} />
+    <View>
       {isChannel && channel.isPending && <Label>Загрузка канала…</Label>}
       {isChannel && channel.error && <><Notice text={errorMessage(channel.error)} /><Button title="Повторить" onPress={() => { void channel.refetch(); }} /></>}
       {isGroup && group.isPending && <Label>Загрузка группы…</Label>}
       {isGroup && group.error && <><Notice text={errorMessage(group.error)} /><Button title="Повторить" onPress={() => { void group.refetch(); }} /></>}
-      {group.data && <><Label>{group.data.memberCount} участников · {group.data.viewerRole === 'READER' ? 'Только чтение' : 'Можно писать'}</Label>
-        <Button title="Участники и роли" onPress={() => router.push({ pathname: '/members/[id]', params: { id, kind: 'group' } })} /></>}
-      {channel.data && <><Label>@{channel.data.username} · {channel.data.subscriberCount} подписчиков</Label>{!!channel.data.description && <Text style={s.text} numberOfLines={2}>{channel.data.description}</Text>}
-        {(channel.data.viewerRole === 'OWNER' || channel.data.viewerRole === 'ADMIN') &&
-          <Button title="Подписчики и роли" onPress={() => router.push({ pathname: '/members/[id]', params: { id, kind: 'channel' } })} />}
-        {channel.data.owner.id !== auth?.user.id && <Button title={subscription.isPending ? 'Подождите…' : channel.data.subscribed ? 'Отписаться' : 'Подписаться'} disabled={subscription.isPending} onPress={() => subscription.mutate()} />}</>}
       {subscription.error && <Notice text={errorMessage(subscription.error)} />}
       {recovery.status === 'syncing' && <Label>Восстановление публикаций…</Label>}
       {recovery.status === 'error' && <><Notice text={recovery.message} /><Button title="Восстановить историю" onPress={() => { void synchronizeSubscription(); }} /></>}
@@ -85,3 +93,10 @@ function Chat({ id, kind, title, peer }: { id: string; kind: 'channel' | 'group'
     </>}
   </KeyboardAvoidingView>;
 }
+
+const styles = StyleSheet.create({
+  header: { padding: 8, gap: 8, flexDirection: 'row', alignItems: 'center', backgroundColor: colors.panel, borderBottomWidth: 2, borderBottomColor: '#171e14' },
+  headerText: { flex: 1, minWidth: 0, gap: 4 },
+  title: { fontFamily: 'RobotoMono_400Regular', color: colors.ink, fontSize: 14, fontWeight: '700' },
+  subtitle: { fontFamily: 'RobotoMono_400Regular', color: '#50584a', fontSize: 10 },
+});

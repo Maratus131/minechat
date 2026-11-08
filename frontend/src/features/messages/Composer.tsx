@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 
 import { useQueryClient } from '@tanstack/react-query';
 import { errorMessage } from '../../api/client';
 import { formatSize } from '../../shared/ui';
+import { Icon } from '../../shared/Icon';
 import { useSession } from '../auth/Session';
 import { acceptMessage } from './history';
 import { validateMessage } from './validation';
@@ -63,15 +64,15 @@ export function Composer({ id, onSent }: { id: string; onSent: () => void }) {
     if (fileInput.current) fileInput.current.value = '';
   }
   return <form className={styles.composer} onSubmit={handleSubmit} ref={form} aria-label="Отправить сообщение">
-    <VoiceRecorder disabled={pending || files.length >= 5} onActiveChange={setRecording} onReady={(file) => setFiles((current) => [...current, file])} />
     {files.length > 0 && <ul className={styles.selectedFiles}>{files.map((file, index) => <li key={`${file.name}-${file.lastModified}-${index}`}><SelectedMedia file={file} />{!isVoiceFile(file.name) && <span>{file.name} <small>{formatSize(file.size)}</small></span>}<button type="button" disabled={pending} onClick={() => setFiles(files.filter((_, position) => position !== index))} aria-label={isVoiceFile(file.name) ? 'Убрать голосовое' : `Убрать ${file.name}`}>×</button></li>)}</ul>}
     {state.status === 'error' && <p className={styles.sendError} role="alert">{state.message}</p>}
     <div className={styles.composerRow}>
       <input ref={fileInput} className="srOnly" type="file" multiple onChange={(event) => handleFiles(event.target.files)} tabIndex={-1} aria-label="Выбрать файлы" disabled={pending || recording} />
-      <button type="button" className={styles.attachButton} disabled={pending || recording || files.length >= 5} onClick={() => fileInput.current?.click()}>+ Файл</button>
+      <button type="button" className={styles.attachButton} aria-label="Прикрепить файл" title="Прикрепить файл" disabled={pending || recording || files.length >= 5} onClick={() => fileInput.current?.click()}><Icon name="attach" /></button>
       <label className="srOnly" htmlFor="message-text">Сообщение</label>
-      <textarea id="message-text" ref={textInput} rows={1} maxLength={4096} value={text} readOnly={pending} placeholder="Написать сообщение…" aria-describedby="message-limits" onChange={(event) => setText(event.target.value)} onKeyDown={handleKeyDown} />
-      <button type="submit" className={`primary ${styles.sendButton}`} disabled={pending || recording || (!text.trim() && files.length === 0)}>{pending ? 'Отправка…' : 'Отправить'}</button>
+      <textarea id="message-text" ref={textInput} rows={1} maxLength={4096} value={text} readOnly={pending} placeholder="Сообщение…" aria-describedby="message-limits" onChange={(event) => setText(event.target.value)} onKeyDown={handleKeyDown} />
+      <VoiceRecorder disabled={pending || files.length >= 5} onActiveChange={setRecording} onReady={(file) => setFiles((current) => [...current, file])} />
+      <button type="submit" className={`primary ${styles.sendButton}`} aria-label={pending ? 'Отправка сообщения' : 'Отправить сообщение'} title="Отправить сообщение" disabled={pending || recording || (!text.trim() && files.length === 0)}><Icon name="send" /><span>{pending ? 'Отправка…' : 'Отправить'}</span></button>
     </div>
     <div className={styles.composerHint}><span id="message-limits">До 5 файлов по 10 МиБ · {text.length ? `${text.length}/4096` : 'до 4096 символов'}</span>{pending ? <button type="button" onClick={() => request.current?.abort()}>Остановить</button> : <span className={styles.enterHint}>Shift + Enter — новая строка</span>}</div>
   </form>;

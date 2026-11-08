@@ -1,3 +1,4 @@
+import { Icon } from '../../shared/Icon';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { errorMessage } from '../../api/client';
@@ -21,10 +22,10 @@ function ChatView({ id }: { id: string }) {
   if (dialog.isError) return <section className={styles.chat}><StatusPanel title="Диалог недоступен" kind="error" retry={() => void dialog.refetch()}><p>{errorMessage(dialog.error)}</p><Link className="button" to="/chats">К диалогам</Link></StatusPanel></section>;
   return <section className={styles.chat} aria-label={`Диалог с ${dialog.data.peer.displayName}`}>
     <header className={styles.chatHeader}>
-      <Link className={`button iconButton ${styles.back}`} to="/chats" aria-label="Назад к диалогам">‹</Link>
+      <Link className={`button iconButton ${styles.back}`} to="/chats" aria-label="Назад к диалогам"><Icon name="back" /></Link>
       <span className={styles.peerAvatar}><UserAvatar user={dialog.data.peer} /></span>
       <div className={styles.peerName}><strong>{dialog.data.peer.displayName}</strong><span>@{dialog.data.peer.username}</span></div>
-      <button className={styles.searchToggle} onClick={() => setSearching(!searching)} aria-pressed={searching}>{searching ? 'Чат' : <><span className={styles.searchDesktop}>Поиск в чате</span><span className={styles.searchMobile}>Поиск</span></>}</button>
+      <button className={styles.searchToggle} onClick={() => setSearching(!searching)} aria-label={searching ? 'Закрыть поиск' : 'Поиск в чате'} title={searching ? 'Закрыть поиск' : 'Поиск в чате'} aria-pressed={searching}><Icon name={searching ? 'close' : 'search'} /></button>
     </header>
     {searching ? <SearchMessages id={id} /> : <MessageHistory id={id} sentVersion={sentVersion} />}
     <Composer id={id} onSent={() => { setSentVersion((value) => value + 1); setSearching(false); }} />
