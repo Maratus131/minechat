@@ -1,5 +1,6 @@
 export interface User { id: string; username: string; displayName: string; avatarId: string | null }
 export interface Profile extends User { birthDate: string | null }
+export interface Presence { userId: string; online: boolean }
 export interface Attachment { id: string; messageId: number; filename: string; sizeBytes: number }
 export interface Message {
   id: number;
@@ -76,6 +77,11 @@ export function parseProfile(value: unknown): Profile {
   const birthDate = item.birthDate === null ? null : string(item.birthDate);
   if (birthDate !== null && !/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) throw new InvalidResponseError();
   return { ...parseUser(item), birthDate };
+}
+export function parsePresence(value: unknown): Presence {
+  const item = object(value);
+  if (typeof item.online !== 'boolean') throw new InvalidResponseError();
+  return { userId: uuid(item.userId), online: item.online };
 }
 function parseAttachment(value: unknown): Attachment {
   const item = object(value);

@@ -11,6 +11,8 @@ type Preview = { status: 'idle' | 'loading' } | { status: 'ready'; url: string; 
 export function AttachmentButton({ file }: { file: Attachment }) {
   const { api } = useSession();
   const media = mediaType(file.filename);
+  const visual = media?.kind === 'image' || media?.kind === 'video';
+  const mediaLabel = media?.kind === 'image' ? 'фото' : 'видео';
   const voice = isVoiceFile(file.filename);
   const container = useRef<HTMLDivElement>(null);
   const blob = useRef<Blob | null>(null);
@@ -68,10 +70,10 @@ export function AttachmentButton({ file }: { file: Attachment }) {
       previewUrl.current = URL.createObjectURL(value);
       setPreview({ status: 'ready', url: previewUrl.current, blob: value });
     }).catch((cause: unknown) => {
-      if (active && mounted.current && !controller.current?.signal.aborted) setPreview({ status: 'error', message: errorMessage(cause) });
+      if (active && mounted.current && !controller.current?.signal.aborted) setPreview({ status: 'error', message: visual ? 'Не удалось загрузить медиа. Повторите попытку.' : errorMessage(cause) });
     });
     return () => { active = false; };
-  }, [nearby, attempt, media, fetchBlob]);
+  }, [nearby, attempt, media, fetchBlob, visual]);
   async function handleDownload() {
     if (downloading) return;
     setDownloading(true); setError('');
@@ -85,7 +87,7 @@ export function AttachmentButton({ file }: { file: Attachment }) {
       document.body.append(link); link.click(); link.remove();
       const timer = window.setTimeout(() => URL.revokeObjectURL(url), 1000);
       cleanupDownload.current = () => { window.clearTimeout(timer); URL.revokeObjectURL(url); };
-    } catch (cause) { if (mounted.current && !controller.current?.signal.aborted) setError(errorMessage(cause)); }
+    } catch (cause) { if (mounted.current && !controller.current?.signal.aborted) setError(visual ? 'Не удалось скачать медиа. Повторите попытку.' : errorMessage(cause)); }
     finally { if (mounted.current) setDownloading(false); }
   }
   if (voice) return <div ref={container} className={`${styles.attachmentGroup} ${styles.voiceGroup}`}>
@@ -103,15 +105,15 @@ export function AttachmentButton({ file }: { file: Attachment }) {
     {media && <div className={`${styles.mediaPreview} ${media.kind === 'audio' ? styles.audioPreview : ''}`}>
       {(preview.status === 'idle' || preview.status === 'loading') && <p role="status">{media.kind === 'image' ? 'Загрузка фото…' : media.kind === 'audio' ? 'Загрузка аудио…' : 'Загрузка видео…'}</p>}
       {preview.status === 'ready' && (media.kind === 'image'
-        ? <img src={preview.url} alt={file.filename} onError={() => setPreview({ status: 'error', message: 'Не удалось показать фото. Скачайте файл или повторите загрузку.' })} />
+        ? <img src={preview.url} alt="Фото" onError={() => setPreview({ status: 'error', message: 'Не удалось показать фото. Скачайте фото или повторите загрузку.' })} />
         : media.kind === 'audio'
         ? <audio src={preview.url} controls preload="metadata" aria-label={file.filename.startsWith('voice-') ? 'Голосовое сообщение' : file.filename} onError={() => setPreview({ status: 'error', message: 'Браузер не воспроизводит это аудио. Скачайте файл или откройте чат в другом браузере.' })} />
-        : <video src={preview.url} controls playsInline preload="metadata" aria-label={file.filename} onError={() => setPreview({ status: 'error', message: 'Браузер не воспроизводит это видео. Скачайте файл или повторите загрузку.' })} />)}
+        : <video src={preview.url} controls playsInline preload="metadata" aria-label="Видео" onError={() => setPreview({ status: 'error', message: 'Браузер не воспроизводит это видео. Скачайте видео или повторите загрузку.' })} />)}
       {preview.status === 'error' && <div className={styles.mediaError}><p role="alert">{preview.message}</p><button onClick={() => { blob.current = null; setPreview({ status: 'loading' }); setAttempt((value) => value + 1); }}>Повторить</button></div>}
     </div>}
-    <button className={`${styles.attachment} ${media ? styles.mediaDownload : ''}`} onClick={() => void handleDownload()} disabled={downloading} aria-label={`Скачать ${file.filename}, ${formatSize(file.sizeBytes)}`}>
+    {visual ? <button className={styles.mediaSave} onClick={() => void handleDownload()} disabled={downloading} aria-label={`Скачать ${mediaLabel}, ${formatSize(file.sizeBytes)}`}>{downloading ? 'Загрузка…' : `Скачать ${mediaLabel}`}<span>{formatSize(file.sizeBytes)}</span></button> : <button className={`${styles.attachment} ${media ? styles.mediaDownload : ''}`} onClick={() => void handleDownload()} disabled={downloading} aria-label={`Скачать ${file.filename}, ${formatSize(file.sizeBytes)}`}>
       {!media && <span className={styles.downloadIcon} aria-hidden="true">↓</span>}<span className={styles.fileInfo}><strong>{file.filename}</strong><span>{formatSize(file.sizeBytes)} · {downloading ? 'Загрузка…' : 'Скачать'}</span></span>
-    </button>
+    </button>}
     {error && <p className={styles.downloadError} role="alert">{error}</p>}
   </div>;
 }

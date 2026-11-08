@@ -16,12 +16,13 @@ function Video({ uri }: { uri: string }) {
   const player = useVideoPlayer(uri);
   const status = useEvent(player, 'statusChange', { status: player.status });
   useEffect(() => { const subscription = AppState.addEventListener('change', (state) => { if (state !== 'active') player.pause(); }); return () => subscription.remove(); }, [player]);
-  return <>{status.status === 'error' ? <Text style={s.ink}>Видео не воспроизводится. Сохраните его как файл.</Text> : <VideoView player={player} style={styles.media} nativeControls allowsPictureInPicture={false} />}</>;
+  return <>{status.status === 'error' ? <Text style={s.ink}>Видео не воспроизводится. Сохраните его как файл.</Text> : <VideoView accessibilityLabel="Видео" player={player} style={styles.media} nativeControls allowsPictureInPicture={false} />}</>;
 }
 function FileView({ file }: { file: Attachment }) {
   const { api } = useSession();
   const kind = mediaType(file.filename);
   const voice = kind === 'audio' && file.filename.startsWith('voice-');
+  const visual = kind === 'image' || kind === 'video';
   const [failed, setFailed] = useState(false);
   const [shareState, setShareState] = useState<'idle' | 'loading'>('idle');
   const [error, setError] = useState('');
@@ -29,12 +30,12 @@ function FileView({ file }: { file: Attachment }) {
   async function share() { setShareState('loading'); setError(''); try { await shareFile(api, file); } catch (failure) { setError(errorMessage(failure)); } finally { setShareState('idle'); } }
   return <View style={styles.file}>
     {kind && preview.isPending && <Text style={s.ink}>Загрузка медиа…</Text>}
-    {kind === 'image' && preview.data && !failed && <Image accessibilityLabel={file.filename} source={{ uri: preview.data }} resizeMode="contain" style={styles.media} onError={() => setFailed(true)} />}
+    {kind === 'image' && preview.data && !failed && <Image accessibilityLabel="Фото" source={{ uri: preview.data }} resizeMode="contain" style={styles.media} onError={() => setFailed(true)} />}
     {kind === 'video' && preview.data && <Video uri={preview.data} />}
     {kind === 'audio' && preview.data && <AudioMessage uri={preview.data} sizeBytes={file.sizeBytes} />}
     {(failed || preview.error) && <Text style={s.ink}>Превью недоступно. Файл можно сохранить.</Text>}
-    {!voice && <Text style={s.ink}>{file.filename} · {(file.sizeBytes / 1024).toFixed(1)} КиБ</Text>}
-    {voice ? <Pressable accessibilityRole="button" accessibilityLabel="Сохранить или поделиться голосовым" accessibilityState={{ disabled: shareState === 'loading' }} disabled={shareState === 'loading'} onPress={() => { void share(); }} style={styles.shareVoice}><Text style={styles.shareVoiceText}>{shareState === 'loading' ? 'Загрузка…' : '↓ Сохранить'}</Text></Pressable> : <Button title={shareState === 'loading' ? 'Загрузка…' : 'Сохранить / поделиться'} disabled={shareState === 'loading'} onPress={() => { void share(); }} />}
+    {!voice && !visual && <Text style={s.ink}>{file.filename} · {(file.sizeBytes / 1024).toFixed(1)} КиБ</Text>}
+    {voice || visual ? <Pressable accessibilityRole="button" accessibilityLabel={voice ? 'Сохранить или поделиться голосовым' : kind === 'image' ? 'Сохранить или поделиться фото' : 'Сохранить или поделиться видео'} accessibilityState={{ disabled: shareState === 'loading' }} disabled={shareState === 'loading'} onPress={() => { void share(); }} style={styles.shareVoice}><Text style={styles.shareVoiceText}>{shareState === 'loading' ? 'Загрузка…' : '↓ Сохранить'}</Text></Pressable> : <Button title={shareState === 'loading' ? 'Загрузка…' : 'Сохранить / поделиться'} disabled={shareState === 'loading'} onPress={() => { void share(); }} />}
     {error && <Notice text={error} />}
   </View>;
 }

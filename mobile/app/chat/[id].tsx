@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
-import { BackHandler, FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState, BackHandler, FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSession } from '../../src/session';
 import { acceptMessage, recoverHistory, useHistory } from '../../src/history';
@@ -28,6 +28,25 @@ function Chat({ id, kind, title, peer }: { id: string; kind: 'channel' | 'group'
   const isGroup = kind === 'group';
   const [search, setSearch] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const [foreground, setForeground] = useState(AppState.currentState === 'active');
+  useFocusEffect(useCallback(() => {
+    if (kind !== 'direct') return;
+    setFocused(true);
+    setForeground(AppState.currentState === 'active');
+    void cache.invalidateQueries({ queryKey: ['presence', id], exact: true });
+    const listener = AppState.addEventListener('change', (state) => {
+      const active = state === 'active';
+      setForeground(active);
+      if (active) void cache.invalidateQueries({ queryKey: ['presence', id], exact: true });
+      else void cache.cancelQueries({ queryKey: ['presence', id], exact: true });
+    });
+    return () => { setFocused(false); listener.remove(); void cache.cancelQueries({ queryKey: ['presence', id], exact: true }); };
+  }, [cache, id, kind]));
+  const presenceEnabled = kind === 'direct' && focused && foreground;
+  const presence = useQuery({ queryKey: ['presence', id], queryFn: ({ signal }) => api.presence(id, signal),
+    enabled: presenceEnabled, staleTime: 30_000, refetchInterval: presenceEnabled ? 15_000 : false, refetchIntervalInBackground: false, retry: 1 });
+  const online = presenceEnabled && !presence.isError && !presence.isStale && presence.data?.online === true && presence.data.userId === peer?.id;
   useEffect(() => {
     if (!search) return;
     const listener = BackHandler.addEventListener('hardwareBackPress', () => { setSearch(false); return true; });
@@ -63,9 +82,9 @@ function Chat({ id, kind, title, peer }: { id: string; kind: 'channel' | 'group'
   const actions: SheetAction[] = [{ title: search ? 'Закрыть поиск' : 'Поиск сообщений', onPress: () => setSearch(!search) }];
   if (group.data || channel.data && canModerate) actions.push({ title: isGroup ? 'Участники и роли' : 'Подписчики и роли', onPress: () => router.push({ pathname: '/members/[id]', params: { id, kind } }) });
   if (channel.data && channel.data.owner.id !== auth?.user.id) actions.push({ title: subscription.isPending ? 'Подождите…' : channel.data.subscribed ? 'Отписаться от канала' : 'Подписаться на канал', disabled: subscription.isPending, onPress: () => subscription.mutate() });
-  const subtitle = group.data ? `${group.data.memberCount} участников · ${role === 'READER' ? 'Только чтение' : 'Группа'}` : channel.data ? `${channel.data.subscriberCount} подписчиков · Канал` : isChannel ? 'Канал' : isGroup ? 'Группа' : 'Личный чат';
+  const subtitle = online ? 'В сети' : group.data ? `${group.data.memberCount} участников · ${role === 'READER' ? 'Только чтение' : 'Группа'}` : channel.data ? `${channel.data.subscriberCount} подписчиков · Канал` : isChannel ? 'Канал' : isGroup ? 'Группа' : 'Личный чат';
   return <KeyboardAvoidingView style={s.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-    <View style={styles.header}><IconButton icon="back" label="Назад к чатам" onPress={() => router.canGoBack() ? router.back() : router.replace('/')} />{peer && <Avatar user={peer} size={36} />}<View style={styles.headerText}><Text accessibilityRole="header" numberOfLines={1} style={styles.title}>{channel.data?.title || group.data?.title || title}</Text><Text numberOfLines={1} style={styles.subtitle}>{subtitle}</Text></View><IconButton icon={search ? 'close' : 'more'} label={search ? 'Закрыть поиск' : 'Действия чата'} onPress={() => search ? setSearch(false) : setActionsOpen(true)} /></View>
+    <View style={styles.header}><IconButton icon="back" label="Назад к чатам" onPress={() => router.canGoBack() ? router.back() : router.replace('/')} />{peer && <Avatar user={peer} size={36} />}<View style={styles.headerText}><Text accessibilityRole="header" numberOfLines={1} style={styles.title}>{channel.data?.title || group.data?.title || title}</Text><Text numberOfLines={1} style={[styles.subtitle, online && styles.online]}>{subtitle}</Text></View><IconButton icon={search ? 'close' : 'more'} label={search ? 'Закрыть поиск' : 'Действия чата'} onPress={() => search ? setSearch(false) : setActionsOpen(true)} /></View>
     <ActionSheet title={channel.data?.title || group.data?.title || title} visible={actionsOpen} onClose={() => setActionsOpen(false)} actions={actions} description={channel.data ? `@${channel.data.username}${channel.data.description ? `\n${channel.data.description}` : ''}` : undefined} />
     <View>
       {isChannel && channel.isPending && <Label>Загрузка канала…</Label>}
@@ -99,4 +118,5 @@ const styles = StyleSheet.create({
   headerText: { flex: 1, minWidth: 0, gap: 4 },
   title: { fontFamily: 'RobotoMono_400Regular', color: colors.ink, fontSize: 14, fontWeight: '700' },
   subtitle: { fontFamily: 'RobotoMono_400Regular', color: '#50584a', fontSize: 10 },
+  online: { color: '#365c18', fontWeight: '700' },
 });

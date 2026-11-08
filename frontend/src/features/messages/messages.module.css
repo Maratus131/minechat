@@ -3,6 +3,7 @@
 .peerName { min-width: 0; display: grid; gap: 7px; flex: 1; }
 .peerName strong { white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
 .peerName span { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+.peerName .online { color: #31551e; font-weight: 600; }
 .searchToggle { min-width: 170px; }
 .back, .searchMobile { display: none; }
 .historyWrap { min-height: 0; flex: 1; position: relative; display: flex; background: var(--chat); border: 2px solid var(--border); }
@@ -89,6 +90,9 @@
 .mediaDownload { min-height: 50px; padding: 6px 10px; border-top: 0; }
 .mediaDownload .fileInfo { gap: 2px; }
 .mediaDownload .fileInfo strong { font-size: 11px; }
+.mediaSave { min-height: 44px; width: 100%; padding: 6px 8px; border: 0; box-shadow: none; background: transparent; color: var(--muted-on-dark); font: 11px/1.5 var(--font-body); justify-content: space-between; }
+.mediaSave:hover:not(:disabled) { background: #ffffff12; }
+.mediaSave:disabled { background: transparent; color: var(--muted-on-dark); }
 .selectedFiles li > .selectedPreview { flex: none; width: 100px; }
 .selectedPreview > img, .selectedPreview > video { width: 100%; max-height: 86px; object-fit: contain; display: block; background: var(--chat); }
 @media (max-width: 700px) { .mediaGroup { width: 90%; } .channelPosts .mediaGroup { max-width: 100%; } .channelInfo { font-size: 10px; } .mediaPreview > img, .mediaPreview > video { max-height: 380px; } .selectedFiles li { flex-wrap: wrap; } }

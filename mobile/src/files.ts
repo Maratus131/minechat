@@ -87,7 +87,8 @@ export function downloadAvatar(api: ChatApi, user: User): Promise<string> {
 export async function shareFile(api: ChatApi, file: Attachment) {
   if (!await Sharing.isAvailableAsync()) throw new Error('Отправка файлов недоступна на этом устройстве.');
   const uri = await downloadFile(api, file);
-  await Sharing.shareAsync(uri, { dialogTitle: file.filename });
+  const kind = mediaType(file.filename);
+  await Sharing.shareAsync(uri, { dialogTitle: kind === 'image' ? 'Фото' : kind === 'video' ? 'Видео' : file.filename });
 }
 export async function stageFile(source: string, name: string) {
   const current = generation;

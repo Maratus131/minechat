@@ -9,9 +9,10 @@ import { discardFile, mediaType, stageFile } from './files';
 import { VoiceRecorder } from './VoiceRecorder';
 import { AudioMessage } from './AudioMessage';
 import { acceptMessage } from './history';
-import { Button, colors, Notice, s } from './ui';
+import { Button, colors, Notice } from './ui';
 import { IconButton } from './Icon';
 import { ActionSheet } from './ActionSheet';
+import { SelectedMedia } from './SelectedMedia';
 
 export function Composer({ id }: { id: string }) {
   const { api } = useSession(); const cache = useQueryClient();
@@ -53,7 +54,16 @@ export function Composer({ id }: { id: string }) {
   }
   const busy = send.isPending || picking || recording;
   return <View style={styles.composer}>
-    {!!files.length && <ScrollView horizontal style={{ maxHeight: 200 }} keyboardShouldPersistTaps="handled">{files.map((file) => <View key={file.uri} style={s.content}>{!(mediaType(file.name) === 'audio' && file.name.startsWith('voice-')) && <Text style={s.text}>{file.name}</Text>}{mediaType(file.name) === 'audio' && !recording && !send.isPending && <AudioMessage uri={file.uri} sizeBytes={file.size} />}<Button title="Убрать" disabled={busy} onPress={() => { void discardFile(file.uri); updateFiles(files.filter((current) => current.uri !== file.uri)); }} /></View>)}</ScrollView>}
+    {!!files.length && <ScrollView horizontal style={{ maxHeight: 200 }} keyboardShouldPersistTaps="handled">{files.map((file) => {
+      const kind = mediaType(file.name);
+      const visual = kind === 'image' || kind === 'video';
+      const voice = kind === 'audio' && file.name.startsWith('voice-');
+      return <View key={file.uri} style={styles.selected}>
+        {visual ? <SelectedMedia uri={file.uri} kind={kind} /> : !voice && <Text style={styles.filename}>{file.name}</Text>}
+        {kind === 'audio' && !recording && !send.isPending && <AudioMessage uri={file.uri} sizeBytes={file.size} />}
+        <Button title={kind === 'image' ? 'Убрать фото' : kind === 'video' ? 'Убрать видео' : 'Убрать'} disabled={busy} onPress={() => { void discardFile(file.uri); updateFiles(files.filter((current) => current.uri !== file.uri)); }} />
+      </View>;
+    })}</ScrollView>}
     <View style={styles.row}>
       {!recording && <><IconButton icon="attach" label="Прикрепить фото, видео или файл" disabled={busy || files.length >= 5} onPress={() => setAttachmentsOpen(true)} />
         <TextInput accessibilityLabel="Сообщение" placeholder="Сообщение…" placeholderTextColor="#aeb7a3" value={text} onChangeText={setText} multiline maxLength={4096} editable={!busy} style={styles.input} />
@@ -72,6 +82,8 @@ export function Composer({ id }: { id: string }) {
 }
 
 const styles = StyleSheet.create({
+  selected: { gap: 6, paddingRight: 8, maxWidth: 280 },
+  filename: { fontFamily: 'RobotoMono_400Regular', color: colors.ink, fontSize: 12, lineHeight: 18 },
   composer: { padding: 8, gap: 8, backgroundColor: colors.panel, borderTopWidth: 2, borderTopColor: '#171e14' },
   row: { flexDirection: 'row', gap: 4, alignItems: 'flex-end' },
   input: { flex: 1, minWidth: 0, minHeight: 48, maxHeight: 120, paddingHorizontal: 10, paddingVertical: 12, color: colors.incoming, backgroundColor: colors.chat, borderWidth: 2, borderColor: '#171e14', fontFamily: 'RobotoMono_400Regular', fontSize: 14 },

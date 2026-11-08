@@ -8,7 +8,7 @@ import { acceptMessage } from './history';
 import { validateMessage } from './validation';
 import { SelectedMedia } from './SelectedMedia';
 import { VoiceRecorder } from './VoiceRecorder';
-import { isVoiceFile } from './media';
+import { isVoiceFile, mediaType } from './media';
 import styles from './messages.module.css';
 
 type SendState = { status: 'idle' } | { status: 'sending' } | { status: 'error'; message: string };
@@ -64,7 +64,11 @@ export function Composer({ id, onSent }: { id: string; onSent: () => void }) {
     if (fileInput.current) fileInput.current.value = '';
   }
   return <form className={styles.composer} onSubmit={handleSubmit} ref={form} aria-label="Отправить сообщение">
-    {files.length > 0 && <ul className={styles.selectedFiles}>{files.map((file, index) => <li key={`${file.name}-${file.lastModified}-${index}`}><SelectedMedia file={file} />{!isVoiceFile(file.name) && <span>{file.name} <small>{formatSize(file.size)}</small></span>}<button type="button" disabled={pending} onClick={() => setFiles(files.filter((_, position) => position !== index))} aria-label={isVoiceFile(file.name) ? 'Убрать голосовое' : `Убрать ${file.name}`}>×</button></li>)}</ul>}
+    {files.length > 0 && <ul className={styles.selectedFiles}>{files.map((file, index) => {
+      const kind = mediaType(file.name)?.kind;
+      const label = isVoiceFile(file.name) ? 'голосовое' : kind === 'image' ? 'фото' : kind === 'video' ? 'видео' : file.name;
+      return <li key={`${file.name}-${file.lastModified}-${index}`}><SelectedMedia file={file} />{!isVoiceFile(file.name) && <span>{kind === 'image' ? 'Фото' : kind === 'video' ? 'Видео' : file.name} <small>{formatSize(file.size)}</small></span>}<button type="button" disabled={pending} onClick={() => setFiles(files.filter((_, position) => position !== index))} aria-label={`Убрать ${label}`}>×</button></li>;
+    })}</ul>}
     {state.status === 'error' && <p className={styles.sendError} role="alert">{state.message}</p>}
     <div className={styles.composerRow}>
       <input ref={fileInput} className="srOnly" type="file" multiple onChange={(event) => handleFiles(event.target.files)} tabIndex={-1} aria-label="Выбрать файлы" disabled={pending || recording} />

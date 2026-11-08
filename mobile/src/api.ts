@@ -1,7 +1,7 @@
 import { fetch as streamingFetch } from 'expo/fetch';
 import { combineAbortSignals } from './abort';
 export interface PickedFile { uri: string; name: string; size: number; mimeType?: string }
-import { InvalidResponseError, parseAuth, parseChannel, parseChannelMember, parseConversation, parseGroup, parseGroupMember, parseMessage, parsePage, parseProfile, parseUser, type CreateChannel, type Credentials, type GroupRole, type Registration } from '../../frontend/src/api/contracts';
+import { InvalidResponseError, parseAuth, parseChannel, parseChannelMember, parseConversation, parseGroup, parseGroupMember, parseMessage, parsePage, parsePresence, parseProfile, parseUser, type CreateChannel, type Credentials, type GroupRole, type Registration } from '../../frontend/src/api/contracts';
 
 export const baseUrl = (process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2:8080/api/v1').replace(/\/$/, '');
 export function assertApiUrl() {
@@ -102,6 +102,9 @@ export class ChatApi {
   }
   conversations(page = 0, signal?: AbortSignal) {
     return this.json(`/conversations?page=${page}&limit=30`, parsePage(parseConversation), { signal });
+  }
+  presence(id: string, signal?: AbortSignal) {
+    return this.json(`/conversations/${encodeURIComponent(id)}/presence`, parsePresence, { signal });
   }
   channels(page = 0, signal?: AbortSignal) {
     return this.json(`/channels?page=${page}&limit=30`, parsePage(parseChannel), { signal });

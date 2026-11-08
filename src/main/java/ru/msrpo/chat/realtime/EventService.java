@@ -16,9 +16,19 @@ import java.util.concurrent.*;
 public class EventService {
     private record Connection(SseEmitter emitter, Instant expiresAt) {}
     private final ConcurrentHashMap<UUID, CopyOnWriteArrayList<Connection>> connections = new ConcurrentHashMap<>();
+    private final Clock clock;
+
+    public EventService() { this(Clock.systemUTC()); }
+    EventService(Clock clock) { this.clock = clock; }
+
+    public boolean isOnline(UUID user) {
+        var clients = connections.get(user);
+        var now = clock.instant();
+        return clients != null && clients.stream().anyMatch(client -> client.expiresAt().isAfter(now));
+    }
 
     public SseEmitter subscribe(ChatPrincipal viewer) {
-        long timeout = Duration.between(Instant.now(), viewer.expiresAt()).toMillis();
+        long timeout = Duration.between(clock.instant(), viewer.expiresAt()).toMillis();
         if (timeout <= 0) throw new ApiException(HttpStatus.UNAUTHORIZED, "Токен истёк");
         var emitter = new SseEmitter(timeout);
         var connection = new Connection(emitter, viewer.expiresAt());
@@ -55,7 +65,7 @@ public class EventService {
         connections.forEach((user, clients) -> clients.forEach(client -> send(user, client, SseEmitter.event().comment("heartbeat"))));
     }
     private void send(UUID user, Connection connection, SseEmitter.SseEventBuilder event) {
-        if (!connection.expiresAt().isAfter(Instant.now())) {
+        if (!connection.expiresAt().isAfter(clock.instant())) {
             remove(user, connection); connection.emitter().complete(); return;
         }
         try { connection.emitter().send(event); }

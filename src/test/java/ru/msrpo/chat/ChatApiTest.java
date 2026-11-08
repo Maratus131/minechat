@@ -24,6 +24,48 @@ class ChatApiTest {
     @Autowired JsonMapper json;
 
     @Test
+    void presenceTracksAllDevicesAndOnlyShowsDirectPeers() throws Exception {
+        var alice = register(); var bob = register(); var eve = register();
+        String dialog = dialog(alice, bob);
+        String presence = "/api/v1/conversations/" + dialog + "/presence";
+        mvc.perform(get(presence)).andExpect(status().isUnauthorized());
+        mvc.perform(get(presence).header("Authorization", bearer(eve))).andExpect(status().isNotFound());
+        mvc.perform(get("/api/v1/conversations/{id}/presence", UUID.randomUUID()).header("Authorization", bearer(alice)))
+            .andExpect(status().isNotFound());
+        mvc.perform(get(presence).header("Authorization", bearer(alice)))
+            .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+            .andExpect(jsonPath("userId").value(bob.path("user").path("id").asText()))
+            .andExpect(jsonPath("online").value(false));
+        var first = mvc.perform(get("/api/v1/events").header("Authorization", bearer(bob)))
+            .andExpect(request().asyncStarted()).andReturn();
+        var second = mvc.perform(get("/api/v1/events").header("Authorization", bearer(bob)))
+            .andExpect(request().asyncStarted()).andReturn();
+        try {
+            mvc.perform(get(presence).header("Authorization", bearer(alice))).andExpect(jsonPath("online").value(true));
+            mvc.perform(get(presence).header("Authorization", bearer(bob)))
+                .andExpect(jsonPath("userId").value(alice.path("user").path("id").asText()))
+                .andExpect(jsonPath("online").value(false));
+            first.getRequest().getAsyncContext().complete();
+            mvc.perform(get(presence).header("Authorization", bearer(alice))).andExpect(jsonPath("online").value(true));
+        } finally {
+            first.getRequest().getAsyncContext().complete();
+            second.getRequest().getAsyncContext().complete();
+        }
+        mvc.perform(get(presence).header("Authorization", bearer(alice))).andExpect(jsonPath("online").value(false));
+
+        for (String kind : new String[]{"group", "channel"}) {
+            String path = kind.equals("group") ? "/api/v1/groups" : "/api/v1/channels";
+            String body = kind.equals("group") ? "{\"title\":\"Группа\",\"memberIds\":[]}"
+                : "{\"username\":\"c" + UUID.randomUUID().toString().replace("-", "").substring(0, 16) + "\",\"title\":\"Канал\"}";
+            var result = mvc.perform(post(path).header("Authorization", bearer(alice)).contentType("application/json").content(body))
+                .andExpect(status().isCreated()).andReturn();
+            String id = json.readTree(result.getResponse().getContentAsString()).path("id").asText();
+            mvc.perform(get("/api/v1/conversations/{id}/presence", id).header("Authorization", bearer(alice)))
+                .andExpect(status().isNotFound());
+        }
+    }
+
+    @Test
     void eventsReachOnlyParticipantsAfterCommitAndFailedUploadsLeaveNoMessage() throws Exception {
         var alice = register(); var bob = register(); var eve = register();
         String dialog = dialog(alice, bob);

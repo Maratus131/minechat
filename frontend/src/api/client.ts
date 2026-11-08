@@ -1,4 +1,4 @@
-import { InvalidResponseError, parseAuth, parseChannel, parseChannelMember, parseConversation, parseGroup, parseGroupMember, parseMessage, parsePage, parseProfile, parseUser, type CreateChannel, type Credentials, type GroupRole, type Registration } from './contracts';
+import { InvalidResponseError, parseAuth, parseChannel, parseChannelMember, parseConversation, parseGroup, parseGroupMember, parseMessage, parsePage, parsePresence, parseProfile, parseUser, type CreateChannel, type Credentials, type GroupRole, type Registration } from './contracts';
 
 const baseUrl = (import.meta.env.VITE_API_URL || '/api/v1').replace(/\/$/, '');
 
@@ -91,6 +91,9 @@ export class ChatApi {
   }
   conversations(page = 0, signal?: AbortSignal) {
     return this.json(`/conversations?page=${page}&limit=30`, parsePage(parseConversation), { signal });
+  }
+  presence(id: string, signal?: AbortSignal) {
+    return this.json(`/conversations/${encodeURIComponent(id)}/presence`, parsePresence, { signal });
   }
   channels(page = 0, signal?: AbortSignal) {
     return this.json(`/channels?page=${page}&limit=30`, parsePage(parseChannel), { signal });

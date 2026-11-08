@@ -22,8 +22,8 @@ export function SelectedMedia({ file }: { file: File }) {
   if (!media) return null;
   if (isVoiceFile(file.name)) return <span className={`${styles.selectedPreview} ${styles.selectedVoice}`}><VoiceMessage blob={file} sizeBytes={file.size} /></span>;
   return <span className={styles.selectedPreview}>{media.kind === 'image'
-    ? <img ref={image} alt={`Выбрано: ${file.name}`} />
+    ? <img ref={image} alt="Выбранное фото" />
     : media.kind === 'audio'
-    ? <audio ref={audio} controls preload="metadata" aria-label="Прослушать голосовое перед отправкой" />
-    : <video ref={video} controls playsInline preload="metadata" aria-label={`Выбрано: ${file.name}`} />}</span>;
+    ? <audio ref={audio} controls preload="metadata" aria-label={`Аудио: ${file.name}`} />
+    : <video ref={video} controls playsInline preload="metadata" aria-label="Выбранное видео" />}</span>;
 }
