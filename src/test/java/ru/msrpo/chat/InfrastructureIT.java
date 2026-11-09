@@ -39,6 +39,49 @@ class InfrastructureIT extends ChatApiTest {
     @Autowired MessageRepository messageRepository;
 
     @Test
+    void editingDuringIndexingKeepsNewTextPendingAndReplacesSearchTerms() throws Exception {
+        var alice = register(); var bob = register(); String conversation = dialog(alice, bob);
+        long id = send(alice, conversation, "staleoldmarker").path("id").asLong();
+        indexer.indexPending();
+        elasticsearch.indexOps(MessageDocument.class).refresh();
+        mvc.perform(get("/api/v1/conversations/{id}/messages/search", conversation).param("q", "staleoldmarker")
+                .header("Authorization", bearer(bob)))
+            .andExpect(status().isOk()).andExpect(jsonPath("items.length()").value(1));
+        edit(alice, conversation, id, "staleoldmarker indexed snapshot");
+        var indexingStarted = new CountDownLatch(1); var allowIndexing = new CountDownLatch(1);
+        doAnswer(invocation -> {
+            MessageDocument document = invocation.getArgument(0);
+            if (document.messageId() == id) {
+                indexingStarted.countDown();
+                if (!allowIndexing.await(15, TimeUnit.SECONDS)) throw new AssertionError("Indexing was not released");
+            }
+            return invocation.callRealMethod();
+        }).when(elasticsearch).save(any(MessageDocument.class));
+        try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            var indexing = executor.submit(indexer::indexPending);
+            try {
+                assertThat(indexingStarted.await(10, TimeUnit.SECONDS)).isTrue();
+                var editing = executor.submit(() -> edit(alice, conversation, id, "editedfreshmarker"));
+                assertThatThrownBy(() -> editing.get(200, TimeUnit.MILLISECONDS)).isInstanceOf(TimeoutException.class);
+                allowIndexing.countDown();
+                indexing.get(15, TimeUnit.SECONDS);
+                editing.get(15, TimeUnit.SECONDS);
+            } finally { allowIndexing.countDown(); }
+        } finally { reset(elasticsearch); }
+        var changed = messageRepository.findById(id).orElseThrow();
+        assertThat(changed.getText()).isEqualTo("editedfreshmarker");
+        assertThat(changed.isSearchIndexed()).isFalse();
+        indexer.indexPending();
+        elasticsearch.indexOps(MessageDocument.class).refresh();
+        mvc.perform(get("/api/v1/conversations/{id}/messages/search", conversation).param("q", "editedfreshmarker")
+                .header("Authorization", bearer(bob)))
+            .andExpect(status().isOk()).andExpect(jsonPath("items.length()").value(1));
+        mvc.perform(get("/api/v1/conversations/{id}/messages/search", conversation).param("q", "staleoldmarker")
+                .header("Authorization", bearer(bob)))
+            .andExpect(status().isOk()).andExpect(jsonPath("items.length()").value(0));
+    }
+
+    @Test
     void failedIndexingIsRetriedAndDoesNotPreventSending() throws Exception {
         var alice = register(); var bob = register(); String dialog = dialog(alice, bob);
         long id = send(alice, dialog, "recoverable-message").path("id").asLong();

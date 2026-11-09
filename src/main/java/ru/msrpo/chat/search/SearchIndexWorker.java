@@ -24,7 +24,8 @@ public class SearchIndexWorker {
             transactions.executeWithoutResult(status -> messages.resetIndexing());
             index.createWithMapping();
         }
-        // The durable flag and retry with the same document ID make temporary ES failures recoverable.
+        // Pending rows stay write-locked until the ES result and durable flag commit together.
+        // Editing takes the same lock, so a stale indexing snapshot cannot overwrite a newer edit.
         transactions.executeWithoutResult(status -> {
             for (var message : messages.findBySearchIndexedFalseOrderByIdAsc(PageRequest.of(0, 100))) {
                 if (message.isDeleted()) elasticsearch.delete(message.getId().toString(), MessageDocument.class);

@@ -190,6 +190,10 @@ export class ChatApi {
   deleteMessage(conversationId: string, messageId: number) {
     return this.json(`/conversations/${encodeURIComponent(conversationId)}/messages/${messageId}`, parseMessage, { method: 'DELETE' });
   }
+  editMessage(conversationId: string, messageId: number, text: string, signal?: AbortSignal) {
+    return this.json(`/conversations/${encodeURIComponent(conversationId)}/messages/${messageId}`, parseMessage,
+      { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }), signal });
+  }
   async download(id: string, signal?: AbortSignal) {
     return this.request(`/attachments/${encodeURIComponent(id)}`, { signal }, (response) => response.blob());
   }

@@ -48,6 +48,25 @@ public class MessageService {
         return result;
     }
     @Transactional
+    public MessageResponse edit(UUID dialogId, long messageId, UUID viewer, String text) {
+        var conversation = conversations.lockForMember(dialogId, viewer);
+        var message = messages.lockByIdAndConversationId(messageId, dialogId).orElseThrow(ApiException::notFound);
+        if (!message.getSender().getId().equals(viewer))
+            throw new ApiException(HttpStatus.FORBIDDEN, "Редактировать можно только свои сообщения");
+        if (message.isDeleted()) throw new ApiException(HttpStatus.CONFLICT, "Удалённое сообщение нельзя изменить");
+        if (text == null) throw ApiException.badRequest("Укажите текст сообщения");
+        String body = text.strip();
+        if (text.length() > 4096) throw ApiException.badRequest("Не более 4096 символов в сообщении");
+        if (body.indexOf('\0') >= 0) throw ApiException.badRequest("Текст не должен содержать нулевой символ");
+        var files = attachmentRepository.metadata(List.of(messageId));
+        if (body.isBlank() && files.isEmpty()) throw ApiException.badRequest("Добавьте текст или вложение");
+        message.edit(body);
+        if (Objects.equals(conversation.getLastMessageId(), messageId)) conversation.replaceLastMessage(messageId, body);
+        var response = MessageResponse.from(message, files);
+        events.publishEvent(new MessageUpdated(response, recipients(conversation)));
+        return response;
+    }
+    @Transactional
     public MessageResponse delete(UUID dialogId, long messageId, UUID viewer) {
         conversations.requireMember(dialogId, viewer);
         var conversation = conversationRepository.lockById(dialogId).orElseThrow(ApiException::notFound);

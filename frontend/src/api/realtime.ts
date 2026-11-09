@@ -3,7 +3,8 @@ import { parseRealtimeFrame, type Message } from './contracts';
 /** Shared by browser, Electron renderer and React Native; transport auth belongs to ChatApi. */
 export async function consumeRealtime(open: () => Promise<WebSocket>, signal: AbortSignal,
   onReady: (connectionSignal: AbortSignal) => Promise<void>, onMessage: (message: Message) => void,
-  onDeleted: (conversationId: string, messageId: number) => void): Promise<void> {
+  onDeleted: (conversationId: string, messageId: number) => void,
+  onUpdated: (message: Message) => void = onMessage): Promise<void> {
   if (signal.aborted) throw new Error('Соединение остановлено.');
   const socket = await open();
   if (signal.aborted) { socket.close(); throw new Error('Соединение остановлено.'); }
@@ -50,6 +51,7 @@ export async function consumeRealtime(open: () => Promise<WebSocket>, signal: Ab
           await onReady(connection.signal);
         } else if (!ready) throw new Error('Соединение ещё не авторизовано.');
         else if (frame.event === 'message.created') onMessage(frame.data);
+        else if (frame.event === 'message.updated') onUpdated(frame.data);
         else if (frame.event === 'message.deleted') onDeleted(frame.data.conversationId, frame.data.messageId);
       }).catch((error: unknown) => finish(error instanceof Error ? error : new Error('Ошибка потока сообщений.')))
         .finally(() => { queued--; });

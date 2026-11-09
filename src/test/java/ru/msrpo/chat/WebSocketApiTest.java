@@ -35,6 +35,10 @@ class WebSocketApiTest {
             assertThat(request("GET", "/conversations/" + id + "/presence", alice, null).path("online").asBoolean()).isTrue();
             var sent = request("POST", "/conversations/" + id + "/messages", alice, Map.of("text", "direct-ws"));
             assertThat(bobEvents.event("message.created").path("data").path("text").asText()).isEqualTo("direct-ws");
+            var edited = request("PUT", "/conversations/" + id + "/messages/" + sent.path("id").asLong(), alice, Map.of("text", "edited-ws"));
+            var update = bobEvents.event("message.updated");
+            assertThat(update.path("data").path("text").asText()).isEqualTo("edited-ws");
+            assertThat(update.path("data").path("editedAt").asText()).isEqualTo(edited.path("editedAt").asText());
             request("DELETE", "/conversations/" + id + "/messages/" + sent.path("id").asLong(), alice, null);
             assertThat(bobEvents.event("message.deleted").path("data").path("conversationId").asText()).isEqualTo(id);
             var group = request("POST", "/groups", alice, Map.of("title", "WS group", "memberIds", List.of(bob.path("user").path("id").asText())));

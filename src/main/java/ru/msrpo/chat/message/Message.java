@@ -18,6 +18,7 @@ public class Message {
     @ManyToOne(fetch = FetchType.LAZY, optional = false) @JoinColumn(name = "sender_id") private ChatUser sender;
     @Column(nullable = false, length = 4096) private String text;
     @Column(nullable = false) private Instant createdAt;
+    private Instant editedAt;
     @Column(nullable = false) private boolean searchIndexed;
     @Column(nullable = false) private boolean deleted;
     public static Message create(Conversation conversation, ChatUser sender, String text) {
@@ -25,5 +26,6 @@ public class Message {
         message.text = text; message.createdAt = Instant.now(); return message;
     }
     public void markIndexed() { searchIndexed = true; }
+    public void edit(String text) { this.text = text; editedAt = Instant.now(); searchIndexed = false; }
     public void delete() { deleted = true; text = ""; searchIndexed = false; }
 }

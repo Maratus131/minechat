@@ -7,7 +7,7 @@ import { acceptMessage, useHistory } from './history';
 import { MessageItem } from './MessageItem';
 import styles from './messages.module.css';
 
-export function MessageHistory({ id, sentVersion, channel = false, canModerate = false, canDeleteOwn = true }: { id: string; sentVersion: number; channel?: boolean; canModerate?: boolean; canDeleteOwn?: boolean }) {
+export function MessageHistory({ id, sentVersion, channel = false, canModerate = false, canDeleteOwn = true, canEditOwn = true }: { id: string; sentVersion: number; channel?: boolean; canModerate?: boolean; canDeleteOwn?: boolean; canEditOwn?: boolean }) {
   const { api, user } = useSession();
   const cache = useQueryClient();
   const { history, older } = useHistory(id);
@@ -78,7 +78,7 @@ export function MessageHistory({ id, sentVersion, channel = false, canModerate =
         const previous = messages[index - 1];
         const date = formatDate(message.createdAt);
         const canDelete = !message.deleted && (canModerate || (canDeleteOwn && !channel && message.sender.id === user.id));
-        return <li key={message.id} data-message-id={message.id}>{(!previous || new Date(previous.createdAt).toDateString() !== new Date(message.createdAt).toDateString()) && <div className={styles.date}>{date}</div>}<MessageItem message={message} mine={!channel && message.sender.id === user.id} deleting={deletion.isPending && deletion.variables === message.id} onDelete={canDelete ? () => { if (window.confirm('Удалить сообщение для всех?')) deletion.mutate(message.id); } : undefined} /></li>;
+        return <li key={message.id} data-message-id={message.id}>{(!previous || new Date(previous.createdAt).toDateString() !== new Date(message.createdAt).toDateString()) && <div className={styles.date}>{date}</div>}<MessageItem message={message} mine={!channel && message.sender.id === user.id} deleting={deletion.isPending && deletion.variables === message.id} onEdit={!message.deleted && canEditOwn && message.sender.id === user.id ? async (text, signal) => { const updated = await api.editMessage(id, message.id, text, signal); signal.throwIfAborted(); acceptMessage(cache, updated); } : undefined} onDelete={canDelete ? () => { if (window.confirm('Удалить сообщение для всех?')) deletion.mutate(message.id); } : undefined} /></li>;
       })}</ol>
     </div>
     {!atBottom && !!messages?.length && <button className={styles.toBottom} onClick={() => { if (viewport.current) viewport.current.scrollTop = viewport.current.scrollHeight; }}>К новым сообщениям ↓</button>}

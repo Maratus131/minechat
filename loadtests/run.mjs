@@ -14,10 +14,19 @@ const interval = number('MESSAGE_INTERVAL_MS', 5000, 250, 60000);
 if (!Number.isInteger(users) || users % 2) throw new Error('USERS должно быть чётным целым числом.');
 if (users * duration * 1000 / interval > 100_000) throw new Error('Сократите нагрузку: не более 100000 сообщений за прогон.');
 const base = new URL(process.env.BASE_URL || 'http://127.0.0.1:18080/api/v1');
-if (!['127.0.0.1', 'localhost', '[::1]', 'backend'].includes(base.hostname)
-  || !['http:', 'https:'].includes(base.protocol) || base.username || base.password || base.search || base.hash
-  || base.pathname.replace(/\/$/, '') !== '/api/v1') {
-  throw new Error('BASE_URL: только локальный /api/v1 или backend внутри отдельного Docker-стенда. Публичные серверы запрещены.');
+const cloudTarget = 'https://84.201.180.177.sslip.io/api/v1';
+const cloud = process.env.ALLOW_REMOTE_LOAD === '1' && base.href === cloudTarget;
+const local = ['127.0.0.1', 'localhost', '[::1]', 'backend'].includes(base.hostname)
+  && ['http:', 'https:'].includes(base.protocol) && !base.username && !base.password && !base.search && !base.hash
+  && base.pathname.replace(/\/$/, '') === '/api/v1';
+if (!local && !cloud) {
+  throw new Error('BASE_URL: по умолчанию только локальный стенд. Для согласованного HTTPS-адреса рабочего сайта нужен ALLOW_REMOTE_LOAD=1; другие публичные адреса запрещены.');
+}
+if (cloud && (users > 10 || duration > 60)) {
+  throw new Error('Для рабочего сайта разрешены только 2–10 пользователей и не более 60 секунд.');
+}
+if (cloud && interval < 5000) {
+  throw new Error('Для рабочего сайта MESSAGE_INTERVAL_MS должен быть не меньше 5000.');
 }
 base.pathname = base.pathname.replace(/\/$/, '');
 const wsUrl = new URL(`${base}/ws`); wsUrl.protocol = base.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -28,6 +37,14 @@ const limits = {
   deliveryP95Ms: number('MAX_DELIVERY_P95_MS', 2000, 1, 60000),
   deliveryRate: number('MIN_DELIVERY_RATE', 0.99, 0, 1),
 };
+const reportPath = process.env.REPORT_PATH || (cloud ? 'target/load-results/cloud-10.json' : 'target/load-results/latest.json');
+if (cloud && reportPath !== 'target/load-results/cloud-10.json') {
+  throw new Error('Для рабочего сайта используйте REPORT_PATH=target/load-results/cloud-10.json, чтобы сохранить локальный отчёт.');
+}
+if (process.argv.includes('--check-config')) {
+  console.log(JSON.stringify({ runMode: cloud ? 'cloud' : 'local', target: base.toString(), users, durationSeconds: duration, messageIntervalMs: interval, reportPath }, null, 2));
+  process.exit(0);
+}
 const runId = `${Date.now().toString(36)}${randomBytes(2).toString('hex')}`;
 const signal = new AbortController();
 const setup = { requests: 0, failed: 0, durations: [] };
@@ -35,10 +52,13 @@ const workload = { requests: 0, failed: 0, durations: [] };
 const errors = [];
 const clients = [];
 const expected = new Map();
-let closing = false, socketFailures = 0, invalidEvents = 0, isolationLeaks = 0;
+let closing = false, interrupted = false, socketFailures = 0, invalidEvents = 0, isolationLeaks = 0;
 let readyUsers = 0, connectedNow = 0, peakConnections = 0;
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-function sample(message) { if (errors.length < 10 && !errors.includes(message)) errors.push(message); }
+function sample(message) {
+  if (errors.length < 10 && !errors.includes(message)) errors.push(message);
+  if (cloud) signal.abort();
+}
 function percentile(values) {
   if (!values.length) return null;
   const sorted = [...values].sort((a, b) => a - b);
@@ -161,13 +181,13 @@ async function play(actor, until) {
     if (remaining <= interval) break;
   }
 }
-process.once('SIGINT', () => signal.abort());
-process.once('SIGTERM', () => signal.abort());
+process.once('SIGINT', () => { interrupted = true; signal.abort(); });
+process.once('SIGTERM', () => { interrupted = true; signal.abort(); });
 let fatal = null;
 const started = new Date();
 try {
   await waitForServer();
-  console.log(`Нагрузочный стенд: ${base.origin}; пользователей: ${users}; длительность: ${duration} с.`);
+  console.log(`Режим: ${cloud ? 'cloud — рабочий сайт' : 'local — отдельный стенд'}; адрес: ${base.origin}; пользователей: ${users}; длительность: ${duration} с.`);
   await concurrent(Array.from({ length: users }, (_, index) => index), async index => {
     const username = `lt_${runId}_${index}`; const password = randomBytes(18).toString('base64url');
     await request('/auth/register', { method: 'POST', status: 201, body: { username, displayName: `Load user ${index}`, password } });
@@ -211,15 +231,14 @@ const checks = {
 const passed = Object.values(checks).every(Boolean);
 const report = {
   runId, startedAt: started.toISOString(), finishedAt: new Date().toISOString(), node: process.version,
-  target: base.toString(), users, durationSeconds: duration, messageIntervalMs: interval,
+  runMode: cloud ? 'cloud' : 'local', target: base.toString(), users, durationSeconds: duration, messageIntervalMs: interval,
   setupHttp: httpSummary(setup), workloadHttp: http,
   websocket: { readyUsers, peakConnections, acceptedMessages: accepted.length, deliveredMessages: delivered.length, deliveryRate, deliveryP95Ms: deliveryP95, socketFailures, invalidEvents, isolationLeaks },
   limits, checks, passed, errors,
 };
-const reportPath = process.env.REPORT_PATH || 'target/load-results/latest.json';
 await mkdir(dirname(reportPath), { recursive: true }); await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`);
 console.log(JSON.stringify(report, null, 2));
 console.log(`Отчёт: ${reportPath}`);
-process.exitCode = passed ? 0 : signal.signal.aborted ? 130 : 1;
+process.exitCode = passed ? 0 : interrupted ? 130 : 1;
 // Bound shutdown if a disconnected peer never acknowledges the close handshake.
 setTimeout(() => process.exit(process.exitCode), 2000).unref();

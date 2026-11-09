@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, type QueryClient, type InfiniteData } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import type { ChatApi } from '../../api/client';
 import type { Message, Page } from '../../api/contracts';
@@ -7,7 +7,14 @@ import { useSession } from '../auth/Session';
 export const historyKey = (id: string) => ['history', id] as const;
 export interface History extends Page<Message> { syncedThrough: number }
 export function mergeMessages(...batches: Message[][]): Message[] {
-  return [...new Map(batches.flat().map((item) => [item.id, item])).values()].sort((a, b) => a.id - b.id);
+  const messages = new Map<number, Message>();
+  for (const item of batches.flat()) {
+    const previous = messages.get(item.id);
+    if (previous?.deleted && !item.deleted) continue;
+    if (previous && !item.deleted && Date.parse(previous.editedAt || previous.createdAt) > Date.parse(item.editedAt || item.createdAt)) continue;
+    messages.set(item.id, item);
+  }
+  return [...messages.values()].sort((a, b) => a.id - b.id);
 }
 
 export async function refreshConversations(cache: QueryClient) {
@@ -59,6 +66,9 @@ export function historyOptions(cache: QueryClient, api: ChatApi, id: string) {
 }
 
 export function acceptMessage(cache: QueryClient, message: Message) {
+  cache.setQueriesData<InfiniteData<Page<Message>>>({ queryKey: ['message-search', message.conversationId] }, (data) => data ? {
+    ...data, pages: data.pages.map((page) => ({ ...page, items: page.items.map((item) => item.id === message.id ? mergeMessages([item], [message])[0]! : item) })),
+  } : undefined);
   const key = historyKey(message.conversationId);
   const append = () => cache.setQueryData<History>(key, (existing) => existing
     ? { ...existing, items: mergeMessages(existing.items, [message]) } : undefined);
@@ -71,6 +81,7 @@ export function acceptMessage(cache: QueryClient, message: Message) {
     }).catch(() => undefined);
   }
   void refreshConversations(cache);
+  if (message.editedAt) void cache.invalidateQueries({ queryKey: ['message-search', message.conversationId] });
 }
 
 export async function recoverHistory(cache: QueryClient, api: ChatApi, id: string, signal: AbortSignal) {
@@ -89,6 +100,22 @@ export async function recoverHistory(cache: QueryClient, api: ChatApi, id: strin
       if (!page.hasMore) break;
       if (next === undefined || next <= afterId) throw new Error('Не удалось восстановить историю. Повторяем подключение.');
       afterId = next;
+    }
+    // afterId only finds new IDs. Re-read the cached range to recover edits and deletions.
+    const oldest = data.items[0]?.id;
+    if (oldest !== undefined) {
+      let beforeId: number | undefined;
+      while (!signal.aborted) {
+        const page = await api.history(id, beforeId === undefined ? {} : { beforeId }, signal);
+        signal.throwIfAborted();
+        cache.setQueryData<History>(historyKey(id), (current) => current
+          ? { ...current, items: mergeMessages(current.items, page.items) } : undefined);
+        const first = page.items[0]?.id;
+        if (!page.hasMore || first === undefined || first <= oldest) break;
+        if (beforeId !== undefined && first >= beforeId) throw new Error('Не удалось обновить историю.');
+        beforeId = first;
+      }
+      void cache.invalidateQueries({ queryKey: ['message-search', id] });
     }
 }
 

@@ -132,3 +132,18 @@ test('React Native compatible signals work without AbortSignal.throwIfAborted', 
   assert.throws(() => throwIfAborted(controller.signal), { name: 'AbortError' });
   await assert.rejects(consumeRealtime(async () => assert.fail('Opening an aborted connection'), controller.signal, async () => {}, () => {}, () => {}), /остановлено/);
 });
+
+test('Updated events validate editedAt and use the update callback in stream order', async () => {
+  const updated = { ...message, text: 'Edited', editedAt: '2026-11-09T00:00:00Z' };
+  assert.equal(parseRealtimeFrame({ event: 'message.updated', data: updated }).data.editedAt, updated.editedAt);
+  assert.equal(parseRealtimeFrame({ event: 'message.created', data: message }).data.editedAt, null);
+  assert.throws(() => parseRealtimeFrame({ event: 'message.updated', data: { ...updated, editedAt: 'bad' } }));
+  const socket = new Socket();
+  const controller = new AbortController();
+  const calls = [];
+  const running = consumeRealtime(async () => socket, controller.signal, async () => {}, () => calls.push('created'), () => calls.push('deleted'), (value) => calls.push(value.text));
+  const stopped = assert.rejects(running, /остановлено/);
+  await setImmediate(); socket.emit(ready); socket.emit({ event: 'message.updated', data: updated }); await setImmediate();
+  assert.deepEqual(calls, ['Edited']);
+  controller.abort(); await stopped;
+});

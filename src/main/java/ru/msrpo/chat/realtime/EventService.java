@@ -58,6 +58,15 @@ public class EventService {
         }
     }
     @TransactionalEventListener
+    public void messageUpdated(MessageUpdated event) {
+        if (sockets != null) sockets.publish(event.recipients(), "message.updated", event.message());
+        for (UUID user : event.recipients()) {
+            var clients = connections.get(user);
+            if (clients != null) for (var client : clients)
+                send(user, client, SseEmitter.event().name("message.updated").data(event.message()));
+        }
+    }
+    @TransactionalEventListener
     public void messageDeleted(MessageDeleted event) {
         var payload = Map.of("conversationId", event.conversationId(), "messageId", event.messageId());
         if (sockets != null) sockets.publish(event.recipients(), "message.deleted", payload);

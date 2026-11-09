@@ -3,6 +3,7 @@ export interface Profile extends User { birthDate: string | null }
 export interface Presence { userId: string; online: boolean }
 export type RealtimeFrame = { event: 'ready'; data: { userId: string } }
   | { event: 'message.created'; data: Message }
+  | { event: 'message.updated'; data: Message }
   | { event: 'message.deleted'; data: { conversationId: string; messageId: number } }
   | { event: 'heartbeat'; data: Record<string, unknown> };
 export interface Attachment { id: string; messageId: number; filename: string; sizeBytes: number }
@@ -12,6 +13,7 @@ export interface Message {
   sender: User;
   text: string;
   createdAt: string;
+  editedAt?: string | null;
   attachments: Attachment[];
   deleted: boolean;
 }
@@ -95,7 +97,7 @@ export function parseMessage(value: unknown): Message {
   const item = object(value);
   if (!Array.isArray(item.attachments) || typeof item.deleted !== 'boolean') throw new InvalidResponseError();
   return { id: integer(item.id), conversationId: uuid(item.conversationId), sender: parseUser(item.sender),
-    text: string(item.text), createdAt: date(item.createdAt), attachments: item.attachments.map(parseAttachment), deleted: item.deleted };
+    text: string(item.text), createdAt: date(item.createdAt), editedAt: item.editedAt == null ? null : date(item.editedAt), attachments: item.attachments.map(parseAttachment), deleted: item.deleted };
 }
 export function parseConversation(value: unknown): Conversation {
   const item = object(value);
@@ -137,6 +139,7 @@ export function parseRealtimeFrame(value: unknown): RealtimeFrame {
   switch (item.event) {
     case 'ready': return { event: 'ready', data: { userId: uuid(object(item.data).userId) } };
     case 'message.created': return { event: 'message.created', data: parseMessage(item.data) };
+    case 'message.updated': return { event: 'message.updated', data: parseMessage(item.data) };
     case 'message.deleted': return { event: 'message.deleted', data: parseMessageDeleted(item.data) };
     case 'heartbeat': return { event: 'heartbeat', data: object(item.data) };
     default: throw new InvalidResponseError();

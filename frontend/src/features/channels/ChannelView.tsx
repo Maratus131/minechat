@@ -51,7 +51,7 @@ function ChannelView({ id }: { id: string }) {
       <span>{owner ? 'Ваш канал' : data.viewerRole === 'ADMIN' ? 'Вы администратор' : data.subscribed ? 'Вы подписаны' : 'Открытый канал'}</span>
       {!owner && <button className={data.subscribed ? '' : 'primary'} disabled={subscription.isPending} onClick={() => subscription.mutate(!data.subscribed)}>{subscription.isPending ? 'Сохраняем…' : data.subscribed ? 'Отписаться' : 'Подписаться'}</button>}
     </div>{subscription.isError && <ErrorNotice error={subscription.error} retry={() => subscription.mutate(subscription.variables ?? !data.subscribed)} />}</div>
-    {panel === 'members' ? <ChannelMembers channel={data} /> : panel === 'search' ? <SearchMessages id={id} /> : <MessageHistory id={id} sentVersion={sentVersion} channel canModerate={canPost} />}
+    {panel === 'members' ? <ChannelMembers channel={data} /> : panel === 'search' ? <SearchMessages id={id} canEditOwn={canPost} canModerate={canPost} canDeleteOwn={false} /> : <MessageHistory id={id} sentVersion={sentVersion} channel canModerate={canPost} canEditOwn={canPost} />}
     {canPost ? <Composer id={id} onSent={() => { setSentVersion((value) => value + 1); setPanel('chat'); }} /> : <div className={styles.readOnly}>Публикации канала. Сообщения отправляют владелец и администраторы.</div>}
   </section>;
 }

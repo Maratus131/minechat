@@ -12,7 +12,7 @@ import { MessageItem } from '../../src/MessageItem';
 import { Composer } from '../../src/Composer';
 import { SearchMessages } from '../../src/SearchMessages';
 import { Avatar } from '../../src/Avatar';
-import type { User } from '../../../frontend/src/api/contracts';
+import type { Message, User } from '../../../frontend/src/api/contracts';
 
 export default function ChatRoute() {
   const params = useLocalSearchParams<{ id: string; kind: string; title: string; peerId: string; peerAvatarId: string }>();
@@ -74,6 +74,8 @@ function Chat({ id, kind, title, peer }: { id: string; kind: 'channel' | 'group'
   const role = isChannel ? channel.data?.viewerRole : isGroup ? group.data?.viewerRole : undefined;
   const canPublish = kind === 'direct' || isChannel && (role === 'OWNER' || role === 'ADMIN') || isGroup && (role === 'OWNER' || role === 'ADMIN' || role === 'MEMBER');
   const canModerate = role === 'OWNER' || role === 'ADMIN';
+  const canEdit = (message: Message) => !message.deleted && canPublish && message.sender.id === auth?.user.id;
+  const canDelete = (message: Message) => !message.deleted && (canModerate || kind === 'direct' && message.sender.id === auth?.user.id || isGroup && role === 'MEMBER' && message.sender.id === auth?.user.id);
   const deletion = useMutation({ mutationFn: (messageId: number) => api.deleteMessage(id, messageId), onSuccess: (message) => {
     acceptMessage(cache, message);
     void cache.invalidateQueries({ queryKey: ['message-search', id] });
@@ -96,14 +98,14 @@ function Chat({ id, kind, title, peer }: { id: string; kind: 'channel' | 'group'
       {recovery.status === 'error' && <><Notice text={recovery.message} /><Button title="Восстановить историю" onPress={() => { void synchronizeSubscription(); }} /></>}
       {deletion.error && <Notice text={errorMessage(deletion.error)} />}
     </View>
-    {search ? <SearchMessages id={id} /> : <>
+    {search ? <SearchMessages id={id} canEdit={canEdit} canDelete={canDelete} deleting={deletion.isPending} onDelete={(messageId) => deletion.mutate(messageId)} /> : <>
       {history.isPending && <Label>Загрузка истории…</Label>}
       {history.error && <><Notice text={errorMessage(history.error)} /><Button title="Повторить" onPress={() => { void history.refetch(); }} /></>}
       {older.error && <Notice text={errorMessage(older.error)} />}
       <FlatList style={{ flex: 1, backgroundColor: colors.chat }} inverted data={messages} keyExtractor={(message) => String(message.id)}
         maintainVisibleContentPosition={{ minIndexForVisible: 0, autoscrollToTopThreshold: 60 }}
         keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" renderItem={({ item }) => <MessageItem message={item}
-          canDelete={!item.deleted && (canModerate || kind === 'direct' && item.sender.id === auth?.user.id || isGroup && role === 'MEMBER' && item.sender.id === auth?.user.id)}
+          canDelete={canDelete(item)} canEdit={canEdit(item)}
           deleting={deletion.isPending} onDelete={() => deletion.mutate(item.id)} />}
         ListEmptyComponent={history.isSuccess ? <View style={s.content}><Label>Сообщений пока нет.</Label></View> : null}
         ListFooterComponent={history.data?.hasMore ? <View style={s.content}><Button title={older.isPending ? 'Загрузка…' : 'Старые сообщения'} disabled={older.isPending} onPress={() => older.mutate()} /></View> : null} />

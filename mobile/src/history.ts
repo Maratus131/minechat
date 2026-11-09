@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, type InfiniteData, type QueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import type { ChatApi } from './api';
 import type { Message, Page } from '../../frontend/src/api/contracts';
@@ -8,7 +8,14 @@ import { throwIfAborted } from './abort';
 export const historyKey = (id: string) => ['history', id] as const;
 export interface History extends Page<Message> { syncedThrough: number }
 export function mergeMessages(...batches: Message[][]): Message[] {
-  return [...new Map(batches.flat().map((item) => [item.id, item])).values()].sort((a, b) => a.id - b.id);
+  const messages = new Map<number, Message>();
+  for (const item of batches.flat()) {
+    const previous = messages.get(item.id);
+    if (previous?.deleted && !item.deleted) continue;
+    if (previous && !item.deleted && Date.parse(previous.editedAt ?? previous.createdAt) > Date.parse(item.editedAt ?? item.createdAt)) continue;
+    messages.set(item.id, item);
+  }
+  return [...messages.values()].sort((a, b) => a.id - b.id);
 }
 
 export async function refreshConversations(cache: QueryClient) {
@@ -53,6 +60,17 @@ export function acceptMessage(cache: QueryClient, message: Message) {
       if (cache.getQueryCache().find({ queryKey: key }) === query) append();
     }).catch(() => undefined);
   }
+  // Keep already displayed search results current, including an in-flight search snapshot.
+  for (const query of cache.getQueryCache().findAll({ queryKey: ['message-search', message.conversationId] })) {
+    const update = () => cache.setQueryData<InfiniteData<Page<Message>>>(query.queryKey, (current) => current ? {
+      ...current, pages: current.pages.map((page) => ({ ...page, items: page.items.map((item) => item.id === message.id ? mergeMessages([item], [message])[0]! : item).filter((item) => !item.deleted) })),
+    } : undefined);
+    update();
+    if (query.promise) void query.promise.then(() => {
+      if (cache.getQueryCache().find({ queryKey: query.queryKey, exact: true }) === query) update();
+    }).catch(() => undefined);
+  }
+  if (message.editedAt || message.deleted) void cache.invalidateQueries({ queryKey: ['message-search', message.conversationId] });
   void refreshConversations(cache);
 }
 
@@ -71,11 +89,19 @@ export async function recoverHistory(cache: QueryClient, api: ChatApi, id: strin
     // Await an in-flight initial history before choosing the catch-up cursor.
     const data = await cache.fetchQuery(historyOptions(cache, api, id));
     throwIfAborted(signal);
-    // Refresh the visible page too: a deletion made while offline has no new message ID.
-    const latest = await api.history(id, {}, signal);
-    throwIfAborted(signal);
-    cache.setQueryData<History>(historyKey(id), (current) => current
-      ? { ...current, items: mergeMessages(current.items, latest.items) } : undefined);
+    // Edits and deletions have no new ID: refresh the entire loaded range, not only the latest page.
+    const oldestLoaded = data.items[0]?.id;
+    let beforeId: number | undefined;
+    while (!signal.aborted) {
+      const page = await api.history(id, { beforeId }, signal);
+      throwIfAborted(signal);
+      cache.setQueryData<History>(historyKey(id), (current) => current
+        ? { ...current, items: mergeMessages(current.items, page.items) } : undefined);
+      const oldest = page.items[0]?.id;
+      if (!page.hasMore || oldest === undefined || oldestLoaded === undefined || oldest <= oldestLoaded) break;
+      if (beforeId !== undefined && oldest >= beforeId) throw new Error('Не удалось обновить историю. Повторяем подключение.');
+      beforeId = oldest;
+    }
     // Local sends/realtime events may be newer than missed messages, so use REST coverage, not the largest visible ID.
     let afterId = data.syncedThrough;
     while (!signal.aborted) {
@@ -97,6 +123,7 @@ export async function recoverHistories(cache: QueryClient, api: ChatApi, signal:
     if (typeof id === 'string') await recoverHistory(cache, api, id, signal);
   }));
   throwIfAborted(signal);
+  await cache.invalidateQueries({ queryKey: ['message-search'] });
   await refreshConversations(cache);
 }
 

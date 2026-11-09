@@ -29,7 +29,7 @@ function GroupView({ id }: { id: string }) {
       <button className={styles.searchToggle} onClick={() => setPanel(panel === 'members' ? 'chat' : 'members')} aria-label={panel === 'members' ? 'Закрыть участников' : 'Участники группы'} title="Участники группы" aria-pressed={panel === 'members'}><Icon name={panel === 'members' ? 'close' : 'people'} /></button>
       <button className={styles.searchToggle} onClick={() => setPanel(panel === 'search' ? 'chat' : 'search')} aria-label={panel === 'search' ? 'Закрыть поиск' : 'Поиск в группе'} title="Поиск в группе" aria-pressed={panel === 'search'}><Icon name={panel === 'search' ? 'close' : 'search'} /></button>
     </header>
-    {panel === 'members' ? <GroupMembers group={data} /> : panel === 'search' ? <SearchMessages id={id} /> : <MessageHistory id={id} sentVersion={sentVersion} canModerate={data.viewerRole === 'OWNER' || data.viewerRole === 'ADMIN'} canDeleteOwn={data.viewerRole !== 'READER'} />}
+    {panel === 'members' ? <GroupMembers group={data} /> : panel === 'search' ? <SearchMessages id={id} canEditOwn={data.viewerRole !== 'READER'} canDeleteOwn={data.viewerRole !== 'READER'} canModerate={data.viewerRole === 'OWNER' || data.viewerRole === 'ADMIN'} /> : <MessageHistory id={id} sentVersion={sentVersion} canModerate={data.viewerRole === 'OWNER' || data.viewerRole === 'ADMIN'} canDeleteOwn={data.viewerRole !== 'READER'} canEditOwn={data.viewerRole !== 'READER'} />}
     {data.viewerRole === 'READER' ? <div className={styles.readOnly}>Вы можете читать сообщения этой группы.</div> : <Composer id={id} onSent={() => { setSentVersion((value) => value + 1); setPanel('chat'); }} />}
   </section>;
 }
