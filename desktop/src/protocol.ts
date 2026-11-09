@@ -51,7 +51,7 @@ function within(root: string, file: string): boolean {
 }
 
 async function proxyApi(request: Request, url: URL, upstream: string, lifetime: AbortSignal): Promise<Response> {
-  if (!['GET', 'POST', 'DELETE', 'HEAD', 'OPTIONS'].includes(request.method)) {
+  if (!['GET', 'POST', 'PUT', 'DELETE', 'HEAD', 'OPTIONS'].includes(request.method)) {
     return problem(405, 'Этот метод не поддерживается.');
   }
   const headers = new Headers();
@@ -92,6 +92,9 @@ async function proxyApi(request: Request, url: URL, upstream: string, lifetime: 
 }
 
 export async function createAppHandler(rendererDirectory: string, upstream: string, lifetime: AbortSignal) {
+  const realtime = new URL('/api/v1/ws', upstream);
+  realtime.protocol = realtime.protocol === 'https:' ? 'wss:' : 'ws:';
+  const rendererHeaders = { ...securityHeaders, 'Content-Security-Policy': csp.replace("connect-src 'self'", `connect-src 'self' ${realtime.origin}`) };
   const root = await realpath(rendererDirectory);
   await stat(join(root, 'index.html'));
   return async (request: Request): Promise<Response> => {
@@ -118,7 +121,7 @@ export async function createAppHandler(rendererDirectory: string, upstream: stri
       const contentType = contentTypes[extname(canonical).toLowerCase()];
       if (!contentType) return problem(404, 'Файл не найден.');
       const body = request.method === 'HEAD' ? null : new Uint8Array(await readFile(canonical));
-      return new Response(body, { headers: { ...securityHeaders, 'Content-Type': contentType } });
+      return new Response(body, { headers: { ...rendererHeaders, 'Content-Type': contentType } });
     } catch { return problem(404, 'Файл не найден.'); }
   };
 }

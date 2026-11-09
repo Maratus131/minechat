@@ -1,6 +1,9 @@
 import { InvalidResponseError, parseAuth, parseChannel, parseChannelMember, parseConversation, parseGroup, parseGroupMember, parseMessage, parsePage, parsePresence, parseProfile, parseUser, type CreateChannel, type Credentials, type GroupRole, type Registration } from './contracts';
 
 const baseUrl = (import.meta.env.VITE_API_URL || '/api/v1').replace(/\/$/, '');
+declare global {
+  interface Window { minechat?: { getRealtimeUrl: () => Promise<string> } }
+}
 
 export class ApiError extends Error {
   readonly status: number;
@@ -32,6 +35,32 @@ export class ChatApi {
   private readonly lifetime = new AbortController();
   constructor(private readonly token?: string, private readonly onUnauthorized?: () => void) {}
   dispose() { this.lifetime.abort(); }
+  async createRealtimeSocket(signal: AbortSignal): Promise<WebSocket> {
+    if (!this.token || signal.aborted || this.lifetime.signal.aborted) throw new Error('Сеанс завершён.');
+    let url: URL;
+    if (window.location.protocol === 'minechat:') {
+      if (!window.minechat) throw new Error('Настройки соединения недоступны.');
+      url = new URL(await window.minechat.getRealtimeUrl());
+    } else {
+      url = new URL(`${baseUrl}/ws`, window.location.href);
+      url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+    }
+    if (!['ws:', 'wss:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) throw new Error('Некорректный адрес сервера сообщений.');
+    if (signal.aborted || this.lifetime.signal.aborted) throw new Error('Сеанс завершён.');
+    const socket = new WebSocket(url.href);
+    const close = () => socket.close();
+    signal.addEventListener('abort', close, { once: true });
+    this.lifetime.signal.addEventListener('abort', close, { once: true });
+    socket.addEventListener('close', () => {
+      signal.removeEventListener('abort', close);
+      this.lifetime.signal.removeEventListener('abort', close);
+    }, { once: true });
+    socket.addEventListener('open', () => {
+      if (signal.aborted || this.lifetime.signal.aborted) { socket.close(); return; }
+      socket.send(JSON.stringify({ type: 'auth', token: this.token }));
+    }, { once: true });
+    return socket;
+  }
 
   async request(path: string, options: RequestInit = {}): Promise<Response> {
     const headers = new Headers(options.headers);

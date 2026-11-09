@@ -21,11 +21,11 @@ export function useRealtime() {
         while (!signal.aborted) {
           try {
             setConnection('Подключение…');
-            await consumeEvents(api, signal, async () => {
-              if (signal.aborted) return;
+            await consumeEvents(api, signal, async (connectionSignal) => {
+              if (connectionSignal.aborted) return;
               setConnection('Восстановление истории…');
-              await recoverHistories(cache, api, signal);
-              if (!signal.aborted) { setConnection('Подключено'); attempt = 0; }
+              await recoverHistories(cache, api, connectionSignal);
+              if (!connectionSignal.aborted) { setConnection('Подключено'); attempt = 0; }
             }, (message) => { if (!signal.aborted) acceptMessage(cache, message); },
             (conversationId, messageId) => { if (!signal.aborted) acceptDeletion(cache, conversationId, messageId); });
           } catch { if (signal.aborted) return; setConnection('Связь потеряна. Переподключение…'); }

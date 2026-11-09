@@ -78,7 +78,7 @@ export async function recoverHistory(cache: QueryClient, api: ChatApi, id: strin
     // Await an in-flight initial history before choosing the catch-up cursor.
     const data = await cache.fetchQuery(historyOptions(cache, api, id));
     signal.throwIfAborted();
-    // Local sends/SSE may be newer than missed messages, so use REST coverage, not the largest visible ID.
+    // Local sends/realtime events may be newer than missed messages, so use REST coverage, not the largest visible ID.
     let afterId = data.syncedThrough;
     while (!signal.aborted) {
       const page = await api.history(id, { afterId }, signal);

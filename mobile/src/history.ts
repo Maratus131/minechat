@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import type { ChatApi } from './api';
 import type { Message, Page } from '../../frontend/src/api/contracts';
 import { useSession } from './session';
+import { throwIfAborted } from './abort';
 
 export const historyKey = (id: string) => ['history', id] as const;
 export interface History extends Page<Message> { syncedThrough: number }
@@ -66,20 +67,20 @@ export function acceptDeletion(cache: QueryClient, conversationId: string, messa
 }
 
 export async function recoverHistory(cache: QueryClient, api: ChatApi, id: string, signal: AbortSignal) {
-    signal.throwIfAborted();
+    throwIfAborted(signal);
     // Await an in-flight initial history before choosing the catch-up cursor.
     const data = await cache.fetchQuery(historyOptions(cache, api, id));
-    signal.throwIfAborted();
+    throwIfAborted(signal);
     // Refresh the visible page too: a deletion made while offline has no new message ID.
     const latest = await api.history(id, {}, signal);
-    signal.throwIfAborted();
+    throwIfAborted(signal);
     cache.setQueryData<History>(historyKey(id), (current) => current
       ? { ...current, items: mergeMessages(current.items, latest.items) } : undefined);
-    // Local sends/SSE may be newer than missed messages, so use REST coverage, not the largest visible ID.
+    // Local sends/realtime events may be newer than missed messages, so use REST coverage, not the largest visible ID.
     let afterId = data.syncedThrough;
     while (!signal.aborted) {
       const page = await api.history(id, { afterId }, signal);
-      signal.throwIfAborted();
+      throwIfAborted(signal);
       const next = page.items.at(-1)?.id;
       cache.setQueryData<History>(historyKey(id), (current) => current
         ? { ...current, items: mergeMessages(current.items, page.items), syncedThrough: next ?? afterId } : undefined);
@@ -95,7 +96,7 @@ export async function recoverHistories(cache: QueryClient, api: ChatApi, signal:
     const id = query.queryKey[1];
     if (typeof id === 'string') await recoverHistory(cache, api, id, signal);
   }));
-  signal.throwIfAborted();
+  throwIfAborted(signal);
   await refreshConversations(cache);
 }
 
@@ -112,7 +113,7 @@ export function useHistory(id: string) {
       if (!beforeId || !existing?.hasMore) return;
       request.current = new AbortController();
       const page = await api.history(id, { beforeId }, request.current.signal);
-      request.current.signal.throwIfAborted();
+      throwIfAborted(request.current.signal);
       cache.setQueryData<History>(historyKey(id), (current) => current
         ? { ...current, items: mergeMessages(page.items, current.items), hasMore: page.hasMore } : undefined);
     },

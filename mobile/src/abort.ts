@@ -1,3 +1,10 @@
+export function throwIfAborted(signal: AbortSignal): void {
+  if (!signal.aborted) return;
+  const error = new Error('Операция остановлена.');
+  error.name = 'AbortError';
+  throw error;
+}
+
 export function combineAbortSignals(first: AbortSignal, second: AbortSignal) {
   const controller = new AbortController();
   const cleanup = () => {

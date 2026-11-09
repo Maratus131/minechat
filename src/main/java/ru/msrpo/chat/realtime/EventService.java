@@ -17,14 +17,19 @@ public class EventService {
     private record Connection(SseEmitter emitter, Instant expiresAt) {}
     private final ConcurrentHashMap<UUID, CopyOnWriteArrayList<Connection>> connections = new ConcurrentHashMap<>();
     private final Clock clock;
+    private final WebSocketEventService sockets;
 
-    public EventService() { this(Clock.systemUTC()); }
-    EventService(Clock clock) { this.clock = clock; }
+    @org.springframework.beans.factory.annotation.Autowired
+    public EventService(WebSocketEventService sockets) { this(Clock.systemUTC(), sockets); }
+    public EventService() { this(Clock.systemUTC(), null); }
+    EventService(Clock clock) { this(clock, null); }
+    private EventService(Clock clock, WebSocketEventService sockets) { this.clock = clock; this.sockets = sockets; }
 
     public boolean isOnline(UUID user) {
         var clients = connections.get(user);
         var now = clock.instant();
-        return clients != null && clients.stream().anyMatch(client -> client.expiresAt().isAfter(now));
+        return (clients != null && clients.stream().anyMatch(client -> client.expiresAt().isAfter(now)))
+            || (sockets != null && sockets.isOnline(user));
     }
 
     public SseEmitter subscribe(ChatPrincipal viewer) {
@@ -45,6 +50,7 @@ public class EventService {
     }
     @TransactionalEventListener
     public void messageCreated(MessageCreated event) {
+        if (sockets != null) sockets.publish(event.recipients(), "message.created", event.message());
         for (UUID user : event.recipients()) {
             var clients = connections.get(user);
             if (clients != null) for (var client : clients)
@@ -54,6 +60,7 @@ public class EventService {
     @TransactionalEventListener
     public void messageDeleted(MessageDeleted event) {
         var payload = Map.of("conversationId", event.conversationId(), "messageId", event.messageId());
+        if (sockets != null) sockets.publish(event.recipients(), "message.deleted", payload);
         for (UUID user : event.recipients()) {
             var clients = connections.get(user);
             if (clients != null) for (var client : clients)

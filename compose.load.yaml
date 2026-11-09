@@ -1,0 +1,68 @@
+name: minechat-loadtest
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: chat_load
+      POSTGRES_USER: chat_load
+      POSTGRES_PASSWORD: ${LOAD_DB_PASSWORD:?Run node loadtests/init.mjs first}
+    volumes:
+      - load-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chat_load -d chat_load"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.2.8
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    volumes:
+      - load-elasticsearch:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s' > /dev/null"]
+      interval: 5s
+      timeout: 10s
+      retries: 40
+
+  backend:
+    build: .
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/chat_load
+      DB_USER: chat_load
+      DB_PASSWORD: ${LOAD_DB_PASSWORD:?Run node loadtests/init.mjs first}
+      JWT_SECRET: ${LOAD_JWT_SECRET:?Run node loadtests/init.mjs first}
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      JAVA_TOOL_OPTIONS: -Xms128m -Xmx768m
+    ports:
+      - "127.0.0.1:18080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+
+  loadtest:
+    image: node:24-alpine
+    profiles: [test]
+    working_dir: /work
+    command: [node, run.mjs]
+    environment:
+      BASE_URL: http://backend:8080/api/v1
+      USERS: ${LOAD_USERS:-100}
+      DURATION_SEC: ${LOAD_DURATION_SEC:-60}
+      MESSAGE_INTERVAL_MS: ${LOAD_MESSAGE_INTERVAL_MS:-5000}
+      REPORT_PATH: /results/latest.json
+    volumes:
+      - ./loadtests:/work:ro
+      - ./target/load-results:/results
+    depends_on:
+      - backend
+
+volumes:
+  load-postgres:
+  load-elasticsearch:

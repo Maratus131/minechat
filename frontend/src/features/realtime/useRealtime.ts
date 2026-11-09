@@ -17,11 +17,11 @@ export function useRealtime() {
       while (!signal.aborted) {
         let liveSince = 0;
         try {
-          await consumeEvents(api, signal, async () => {
-            if (signal.aborted) return;
+          await consumeEvents(api, signal, async (connectionSignal) => {
+            if (connectionSignal.aborted) return;
             setConnection('syncing');
-            await recoverHistories(cache, api, signal);
-            if (!signal.aborted) { setConnection('live'); liveSince = Date.now(); }
+            await recoverHistories(cache, api, connectionSignal);
+            if (!connectionSignal.aborted) { setConnection('live'); liveSince = Date.now(); }
           }, (message) => { if (!signal.aborted) acceptMessage(cache, message); },
           (conversationId, messageId) => { if (!signal.aborted) acceptDeletion(cache, conversationId, messageId); });
         } catch {

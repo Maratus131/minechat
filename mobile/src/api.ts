@@ -1,4 +1,3 @@
-import { fetch as streamingFetch } from 'expo/fetch';
 import { combineAbortSignals } from './abort';
 export interface PickedFile { uri: string; name: string; size: number; mimeType?: string }
 import { InvalidResponseError, parseAuth, parseChannel, parseChannelMember, parseConversation, parseGroup, parseGroupMember, parseMessage, parsePage, parsePresence, parseProfile, parseUser, type CreateChannel, type Credentials, type GroupRole, type Registration } from '../../frontend/src/api/contracts';
@@ -42,6 +41,25 @@ export class ChatApi {
   dispose() { this.lifetime.abort(); }
   get disposed() { return this.lifetime.signal.aborted; }
   expire() { this.dispose(); this.onUnauthorized?.(); }
+  async createRealtimeSocket(signal: AbortSignal): Promise<WebSocket> {
+    assertApiUrl();
+    if (!this.token || signal.aborted || this.disposed) throw new Error('Сеанс завершён.');
+    const url = new URL(`${baseUrl}/ws`);
+    url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+    const socket = new WebSocket(url.href);
+    const close = () => socket.close();
+    signal.addEventListener('abort', close, { once: true });
+    this.lifetime.signal.addEventListener('abort', close, { once: true });
+    socket.addEventListener('close', () => {
+      signal.removeEventListener('abort', close);
+      this.lifetime.signal.removeEventListener('abort', close);
+    }, { once: true });
+    socket.addEventListener('open', () => {
+      if (signal.aborted || this.disposed) { socket.close(); return; }
+      socket.send(JSON.stringify({ type: 'auth', token: this.token }));
+    }, { once: true });
+    return socket;
+  }
 
   async request<T>(path: string, options: RequestInit, consume: (response: Response) => Promise<T>): Promise<T> {
     assertApiUrl();
@@ -51,7 +69,7 @@ export class ChatApi {
     const signal = combined?.signal ?? this.lifetime.signal;
     try {
       let response: Response;
-      try { response = await (path === '/events' ? streamingFetch : fetch)(`${baseUrl}${path}`, { ...options, headers, signal }); }
+      try { response = await fetch(`${baseUrl}${path}`, { ...options, headers, signal }); }
       catch (error) {
         if (signal.aborted) throw error;
         throw new ApiError(0, 'Нет связи с сервером. Проверьте подключение и повторите попытку.');

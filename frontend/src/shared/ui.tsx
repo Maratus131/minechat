@@ -1,9 +1,20 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { errorMessage } from '../api/client';
 import styles from './ui.module.css';
 
-export function Avatar({ name, imageUrl }: { name: string; imageUrl?: string | null }) {
-  return <span className={styles.avatar} aria-hidden="true">{imageUrl ? <img src={imageUrl} alt="" /> : Array.from(name.trim()).slice(0, 2).join('').toLocaleUpperCase('ru')}</span>;
+function AvatarImage({ blob }: { blob: Blob }) {
+  const image = useRef<HTMLImageElement>(null);
+  useEffect(() => {
+    const element = image.current;
+    if (!element) return;
+    const url = URL.createObjectURL(blob);
+    element.src = url;
+    return () => { element.removeAttribute('src'); URL.revokeObjectURL(url); };
+  }, [blob]);
+  return <img ref={image} alt="" />;
+}
+export function Avatar({ name, imageUrl, imageBlob }: { name: string; imageUrl?: string | null; imageBlob?: Blob }) {
+  return <span className={styles.avatar} aria-hidden="true">{imageBlob ? <AvatarImage blob={imageBlob} /> : imageUrl ? <img src={imageUrl} alt="" /> : Array.from(name.trim()).slice(0, 2).join('').toLocaleUpperCase('ru')}</span>;
 }
 export function Brand() {
   return <span className={styles.brand}><span className={styles.block} aria-hidden="true" /><span>MINECHAT</span></span>;

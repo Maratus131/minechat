@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, Menu, protocol, session } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, Menu, protocol, session } from 'electron';
 import { basename, join } from 'node:path';
 import { backendOrigin } from './config.js';
 import { APP_ORIGIN, APP_SCHEME, createAppHandler, isAppPage, isAppUrl } from './protocol.js';
@@ -56,6 +56,13 @@ function installMenu(): void {
 
 async function initialize(): Promise<void> {
   const upstream = await backendOrigin(app.isPackaged ? app.getPath('userData') : app.getAppPath(), app.isPackaged);
+  const realtime = new URL('/api/v1/ws', upstream);
+  realtime.protocol = realtime.protocol === 'https:' ? 'wss:' : 'ws:';
+  ipcMain.handle('minechat:realtime-url', (event) => {
+    if (!window || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame
+      || !isAppPage(event.senderFrame.url)) throw new Error('Источник запроса недоступен.');
+    return realtime.href;
+  });
   const handler = await createAppHandler(join(app.getAppPath(), 'renderer'), upstream, lifetime.signal);
   const currentSession = session.defaultSession;
   currentSession.setPermissionRequestHandler((contents, permission, callback, details) => {
@@ -69,7 +76,8 @@ async function initialize(): Promise<void> {
       && !!details.requestingUrl && isAppPage(details.requestingUrl)
       && details.mediaType === 'audio');
   currentSession.webRequest.onBeforeRequest((details, callback) => {
-    callback({ cancel: !isAppUrl(details.url) && !details.url.startsWith(`blob:${APP_ORIGIN}/`) });
+    const realtimeRequest = details.resourceType === 'webSocket' && details.url === realtime.href;
+    callback({ cancel: !isAppUrl(details.url) && !details.url.startsWith(`blob:${APP_ORIGIN}/`) && !realtimeRequest });
   });
   currentSession.on('will-download', (event, item, contents) => {
     if (!window || contents !== window.webContents || !isAppPage(contents.getURL())

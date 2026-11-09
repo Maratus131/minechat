@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { User } from '../../api/contracts';
 import { Avatar } from '../../shared/ui';
@@ -13,12 +12,5 @@ export function UserAvatar({ user }: { user: User }) {
     staleTime: Infinity,
     retry: false,
   });
-  const [image, setImage] = useState<{ blob: Blob; url: string } | null>(null);
-  useEffect(() => {
-    if (!avatar.data) return;
-    const url = URL.createObjectURL(avatar.data);
-    setImage({ blob: avatar.data, url });
-    return () => URL.revokeObjectURL(url);
-  }, [avatar.data]);
-  return <Avatar name={user.displayName} imageUrl={image && image.blob === avatar.data ? image.url : null} />;
+  return <Avatar name={user.displayName} imageBlob={avatar.data} />;
 }

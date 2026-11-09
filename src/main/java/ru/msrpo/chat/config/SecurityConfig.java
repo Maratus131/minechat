@@ -15,6 +15,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.*;
 import ru.msrpo.chat.auth.JwtAuthenticationFilter;
 import java.util.List;
+import java.util.ArrayList;
 
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(SecurityConfig.CorsProperties.class)
@@ -28,7 +29,7 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
-                .requestMatchers("/api/v1/auth/register", "/api/v1/auth/login", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                .requestMatchers("/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/ws", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 .anyRequest().authenticated())
             .exceptionHandling(errors -> errors
                 .authenticationEntryPoint((request, response, error) -> JwtAuthenticationFilter.unauthorized(response))
@@ -49,6 +50,13 @@ public class SecurityConfig {
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         config.setExposedHeaders(List.of("Content-Disposition"));
-        var source = new UrlBasedCorsConfigurationSource(); source.registerCorsConfiguration("/**", config); return source;
+        var socketConfig = new CorsConfiguration(config);
+        var socketOrigins = new ArrayList<>(properties.allowedOrigins());
+        socketOrigins.add("minechat://app");
+        socketConfig.setAllowedOrigins(socketOrigins);
+        var source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/api/v1/ws", socketConfig);
+        source.registerCorsConfiguration("/**", config);
+        return source;
     }
 }

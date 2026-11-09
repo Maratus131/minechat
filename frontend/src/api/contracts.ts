@@ -1,6 +1,10 @@
 export interface User { id: string; username: string; displayName: string; avatarId: string | null }
 export interface Profile extends User { birthDate: string | null }
 export interface Presence { userId: string; online: boolean }
+export type RealtimeFrame = { event: 'ready'; data: { userId: string } }
+  | { event: 'message.created'; data: Message }
+  | { event: 'message.deleted'; data: { conversationId: string; messageId: number } }
+  | { event: 'heartbeat'; data: Record<string, unknown> };
 export interface Attachment { id: string; messageId: number; filename: string; sizeBytes: number }
 export interface Message {
   id: number;
@@ -127,6 +131,16 @@ export function parseChannelMember(value: unknown): ChannelMember {
 export function parseMessageDeleted(value: unknown): { conversationId: string; messageId: number } {
   const item = object(value);
   return { conversationId: uuid(item.conversationId), messageId: integer(item.messageId) };
+}
+export function parseRealtimeFrame(value: unknown): RealtimeFrame {
+  const item = object(value);
+  switch (item.event) {
+    case 'ready': return { event: 'ready', data: { userId: uuid(object(item.data).userId) } };
+    case 'message.created': return { event: 'message.created', data: parseMessage(item.data) };
+    case 'message.deleted': return { event: 'message.deleted', data: parseMessageDeleted(item.data) };
+    case 'heartbeat': return { event: 'heartbeat', data: object(item.data) };
+    default: throw new InvalidResponseError();
+  }
 }
 export function parseAuth(value: unknown): AuthResponse {
   const item = object(value);

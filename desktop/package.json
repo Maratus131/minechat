@@ -13,6 +13,7 @@
   "scripts": {
     "build:main": "tsc -p tsconfig.json",
     "build:renderer": "node scripts/build-renderer.mjs",
+    "test": "pnpm build && node --test tests/*.test.cjs",
     "build": "pnpm build:main && pnpm build:renderer",
     "start": "electron .",
     "dev": "pnpm build && pnpm start",

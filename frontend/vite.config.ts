@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 5173,
       strictPort: true,
-      proxy: { '/api': { target: `http://${host === '0.0.0.0' ? '127.0.0.1' : host}:8080`, changeOrigin: true } },
+      proxy: { '/api': { target: `http://${host === '0.0.0.0' ? '127.0.0.1' : host}:8080`, changeOrigin: true, ws: true } },
     },
   };
 });

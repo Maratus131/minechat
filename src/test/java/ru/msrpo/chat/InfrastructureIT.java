@@ -12,6 +12,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import ru.msrpo.chat.search.*;
 import ru.msrpo.chat.message.MessageRepository;
 import java.util.concurrent.*;
+import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -24,7 +25,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class InfrastructureIT extends ChatApiTest {
     @Container static final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:17-alpine");
     @Container static final ElasticsearchContainer elastic = new ElasticsearchContainer("docker.elastic.co/elasticsearch/elasticsearch:9.2.8")
-        .withEnv("xpack.security.enabled", "false").withEnv("ES_JAVA_OPTS", "-Xms512m -Xmx512m");
+        .withEnv("xpack.security.enabled", "false").withEnv("ES_JAVA_OPTS", "-Xms512m -Xmx512m")
+        .withStartupTimeout(Duration.ofMinutes(3));
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);

@@ -1,4 +1,6 @@
-'use strict';
+import { contextBridge, ipcRenderer } from 'electron';
 
-// The reused web client needs no native capabilities. Deliberately expose no
-// contextBridge methods, IPC, filesystem, process, credentials or shell access.
+// The renderer can read only the configured realtime endpoint, never arbitrary IPC or credentials.
+contextBridge.exposeInMainWorld('minechat', Object.freeze({
+  getRealtimeUrl: (): Promise<string> => ipcRenderer.invoke('minechat:realtime-url'),
+}));
