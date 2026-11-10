@@ -9,3 +9,5 @@
 !vite.config.ts
 !src/
 !src/**
+!public/
+!public/**
