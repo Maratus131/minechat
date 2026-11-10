@@ -2,8 +2,10 @@ import { app, BrowserWindow, dialog, ipcMain, Menu, protocol, session } from 'el
 import { basename, join } from 'node:path';
 import { backendOrigin } from './config.js';
 import { APP_ORIGIN, APP_SCHEME, createAppHandler, isAppPage, isAppUrl } from './protocol.js';
+import { installNotifications } from './notifications.js';
 
 app.setName('Minechat');
+app.setAppUserModelId('ru.msrpo.minechat');
 app.enableSandbox();
 protocol.registerSchemesAsPrivileged([{
   scheme: APP_SCHEME,
@@ -56,6 +58,13 @@ function installMenu(): void {
 
 async function initialize(): Promise<void> {
   const upstream = await backendOrigin(app.isPackaged ? app.getPath('userData') : app.getAppPath(), app.isPackaged);
+  const clearNotifications = installNotifications(upstream, () => window);
+  app.on('web-contents-created', (_event, contents) => {
+    contents.on('did-start-navigation', (_navigation, _url, isInPlace, isMainFrame) => { if (isMainFrame && !isInPlace) clearNotifications(); });
+    contents.on('render-process-gone', clearNotifications);
+    contents.on('destroyed', clearNotifications);
+  });
+  app.on('before-quit', clearNotifications);
   const realtime = new URL('/api/v1/ws', upstream);
   realtime.protocol = realtime.protocol === 'https:' ? 'wss:' : 'ws:';
   ipcMain.handle('minechat:realtime-url', (event) => {

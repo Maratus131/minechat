@@ -8,6 +8,7 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   { files: ['tests/**/*.mjs'], languageOptions: { globals: globals.node } },
+  { files: ['public/notifications-sw.js'], languageOptions: { globals: globals.serviceworker } },
   {
     files: ['src/**/*.{ts,tsx}'],
     languageOptions: { globals: globals.browser },

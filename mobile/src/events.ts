@@ -3,8 +3,8 @@ import type { Message } from '../../frontend/src/api/contracts';
 import { consumeRealtime } from '../../frontend/src/api/realtime';
 
 export function consumeEvents(api: ChatApi, signal: AbortSignal, onReady: (connectionSignal: AbortSignal) => Promise<void>, onMessage: (message: Message) => void,
-  onDeleted: (conversationId: string, messageId: number) => void) {
-  return consumeRealtime(() => api.createRealtimeSocket(signal), signal, onReady, onMessage, onDeleted);
+  onDeleted: (conversationId: string, messageId: number) => void, onUpdated: (message: Message) => void = onMessage) {
+  return consumeRealtime(() => api.createRealtimeSocket(signal), signal, onReady, onMessage, onDeleted, onUpdated);
 }
 
 export function waitForReconnect(ms: number, signal: AbortSignal): Promise<void> {

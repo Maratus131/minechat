@@ -15,11 +15,12 @@ import { CreateChannel } from '../features/channels/ChannelDiscovery';
 import { CreateGroup } from '../features/groups/CreateGroup';
 import { GroupRoute } from '../features/groups/GroupView';
 import { NavigationMenu } from './NavigationMenu';
+import { NotificationsProvider } from '../features/notifications/Notifications';
 import styles from './App.module.css';
 
 function RequireSession() {
   const { session } = useAuth();
-  return session ? <Outlet /> : <Navigate to="/login" replace />;
+  return session ? <NotificationsProvider key={session.user.id}><Outlet /></NotificationsProvider> : <Navigate to="/login" replace />;
 }
 
 function ChatLayout() {

@@ -12,6 +12,7 @@ import { MessageItem } from '../../src/MessageItem';
 import { Composer } from '../../src/Composer';
 import { SearchMessages } from '../../src/SearchMessages';
 import { Avatar } from '../../src/Avatar';
+import { ChatBackground } from '../../src/ChatBackground';
 import type { Message, User } from '../../../frontend/src/api/contracts';
 
 export default function ChatRoute() {
@@ -102,13 +103,13 @@ function Chat({ id, kind, title, peer }: { id: string; kind: 'channel' | 'group'
       {history.isPending && <Label>Загрузка истории…</Label>}
       {history.error && <><Notice text={errorMessage(history.error)} /><Button title="Повторить" onPress={() => { void history.refetch(); }} /></>}
       {older.error && <Notice text={errorMessage(older.error)} />}
-      <FlatList style={{ flex: 1, backgroundColor: colors.chat }} inverted data={messages} keyExtractor={(message) => String(message.id)}
+      <ChatBackground><FlatList style={s.fill} inverted data={messages} keyExtractor={(message) => String(message.id)}
         maintainVisibleContentPosition={{ minIndexForVisible: 0, autoscrollToTopThreshold: 60 }}
         keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" renderItem={({ item }) => <MessageItem message={item}
           canDelete={canDelete(item)} canEdit={canEdit(item)}
           deleting={deletion.isPending} onDelete={() => deletion.mutate(item.id)} />}
         ListEmptyComponent={history.isSuccess ? <View style={s.content}><Label>Сообщений пока нет.</Label></View> : null}
-        ListFooterComponent={history.data?.hasMore ? <View style={s.content}><Button title={older.isPending ? 'Загрузка…' : 'Старые сообщения'} disabled={older.isPending} onPress={() => older.mutate()} /></View> : null} />
+        ListFooterComponent={history.data?.hasMore ? <View style={s.content}><Button title={older.isPending ? 'Загрузка…' : 'Старые сообщения'} disabled={older.isPending} onPress={() => older.mutate()} /></View> : null} /></ChatBackground>
       {canPublish ? <Composer id={id} /> : <View style={s.content}><Label>{isChannel && (channel.isPending || channel.error) || isGroup && (group.isPending || group.error)
         ? 'Дождитесь загрузки прав чата.' : isGroup ? 'В этой группе у вас доступ только для чтения.' : 'Публиковать в канале могут владельцы и администраторы.'}</Label></View>}
     </>}

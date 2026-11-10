@@ -1,6 +1,13 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
-// The renderer can read only the configured realtime endpoint, never arbitrary IPC or credentials.
+// Narrow, sender-validated operations only. Never expose arbitrary IPC or the filesystem.
 contextBridge.exposeInMainWorld('minechat', Object.freeze({
   getRealtimeUrl: (): Promise<string> => ipcRenderer.invoke('minechat:realtime-url'),
+  setNotificationSession: (token: string | null): Promise<boolean> => ipcRenderer.invoke('minechat:notification-session', token),
+  notify: (notification: unknown): Promise<boolean> => ipcRenderer.invoke('minechat:notify', notification),
+  onNotificationOpen: (callback: (url: string) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, url: unknown) => { if (typeof url === 'string') callback(url); };
+    ipcRenderer.on('minechat:notification-open', listener);
+    return () => ipcRenderer.removeListener('minechat:notification-open', listener);
+  },
 }));

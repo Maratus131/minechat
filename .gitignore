@@ -7,4 +7,6 @@ minechat-deploy.tar.gz
 *.iml
 *.log
 .pnpm-store/
+.agents/
+.codex/
 

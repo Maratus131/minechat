@@ -2,7 +2,12 @@ import { InvalidResponseError, parseAuth, parseChannel, parseChannelMember, pars
 
 const baseUrl = (import.meta.env.VITE_API_URL || '/api/v1').replace(/\/$/, '');
 declare global {
-  interface Window { minechat?: { getRealtimeUrl: () => Promise<string> } }
+  interface Window { minechat?: {
+    getRealtimeUrl: () => Promise<string>;
+    setNotificationSession: (token: string | null) => Promise<boolean>;
+    notify: (notification: { recipientId: string; messageId: number; conversationId: string; title: string; url: string }) => Promise<boolean>;
+    onNotificationOpen: (callback: (url: string) => void) => () => void;
+  } }
 }
 
 export class ApiError extends Error {
@@ -33,8 +38,31 @@ async function responseError(response: Response): Promise<ApiError> {
 
 export class ChatApi {
   private readonly lifetime = new AbortController();
+  private readonly disposeListeners = new Set<() => void>();
   constructor(private readonly token?: string, private readonly onUnauthorized?: () => void) {}
-  dispose() { this.lifetime.abort(); }
+  dispose() { for (const listener of this.disposeListeners) listener(); this.disposeListeners.clear(); this.lifetime.abort(); }
+  onDispose(listener: () => void) {
+    if (this.lifetime.signal.aborted) listener(); else this.disposeListeners.add(listener);
+    return () => { this.disposeListeners.delete(listener); };
+  }
+  authorizeDesktopNotifications() { return window.minechat?.setNotificationSession(this.token ?? null); }
+  async notificationConfig(signal?: AbortSignal): Promise<{ webPushPublicKey: string | null }> {
+    return this.json('/notifications/config', (value) => {
+      if (typeof value !== 'object' || value === null || !('webPushPublicKey' in value)
+        || !(value.webPushPublicKey === null || typeof value.webPushPublicKey === 'string')) throw new InvalidResponseError();
+      return { webPushPublicKey: value.webPushPublicKey };
+    }, { signal });
+  }
+  async subscribeWebPush(subscription: PushSubscription, signal?: AbortSignal) {
+    const { endpoint, keys } = subscription.toJSON();
+    await this.request('/notifications/web-push', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ endpoint, keys }), signal });
+  }
+  async unsubscribeWebPush(endpoint: string) {
+    // Logout disposes the normal API lifetime immediately. This bounded revocation must outlive it.
+    await fetch(`${baseUrl}/notifications/web-push`, { method: 'DELETE', keepalive: true,
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.token ?? ''}` },
+      body: JSON.stringify({ endpoint }), signal: AbortSignal.timeout(5000) });
+  }
   async createRealtimeSocket(signal: AbortSignal): Promise<WebSocket> {
     if (!this.token || signal.aborted || this.lifetime.signal.aborted) throw new Error('Сеанс завершён.');
     let url: URL;

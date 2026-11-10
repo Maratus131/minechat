@@ -10,6 +10,7 @@ import { Icon, IconButton } from '../src/Icon';
 import { ActionSheet } from '../src/ActionSheet';
 import { Avatar } from '../src/Avatar';
 import { ProfileEditor } from '../src/ProfileEditor';
+import { ChatBackground } from '../src/ChatBackground';
 
 type Row = { kind: 'user'; value: User } | { kind: 'channel'; value: Channel } | { kind: 'direct'; value: Conversation } | { kind: 'group'; value: Group };
 const filters = [{ key: 'all', title: 'Все' }, { key: 'direct', title: 'Личные' }, { key: 'group', title: 'Группы' }, { key: 'channel', title: 'Каналы' }] as const;
@@ -61,7 +62,7 @@ export default function Home() {
     {errors.filter(Boolean).map((error, index) => <Notice key={index} text={errorMessage(error)} />)}
     {errors.some(Boolean) && <Button title="Повторить загрузку" onPress={() => { if (searching) { void users.refetch(); void foundChannels.refetch(); } else { void conversations.refetch(); void channels.refetch(); void groups.refetch(); } }} />}
     {openDirect.error && <Notice text={errorMessage(openDirect.error)} />}
-    <FlatList style={s.fill} data={uniqueRows} keyExtractor={(row) => `${row.kind}:${row.value.id}`} keyboardShouldPersistTaps="handled"
+    <ChatBackground><FlatList style={s.fill} data={uniqueRows} keyExtractor={(row) => `${row.kind}:${row.value.id}`} keyboardShouldPersistTaps="handled"
       refreshing={loading && !searching} onRefresh={() => { if (searching) { void users.refetch(); void foundChannels.refetch(); } else { void conversations.refetch(); void channels.refetch(); void groups.refetch(); } }}
       ListEmptyComponent={<View style={styles.empty}><Label>{q.length === 1 || tab === 'Люди' && !searching ? 'Введите от 2 символов для поиска.' : loading ? 'Загрузка…' : searching ? 'Ничего не найдено.' : filter !== 'all' ? `Здесь пока нет ${filter === 'direct' ? 'личных чатов' : filter === 'group' ? 'групп' : 'каналов'}.` : 'Чатов пока нет. Создайте чат или найдите собеседника.'}</Label>{!loading && !searching && tab === 'Чаты' && <Button title="Создать чат" onPress={() => setCreating(true)} />}</View>}
       renderItem={({ item }) => {
@@ -77,7 +78,7 @@ export default function Home() {
         {!searching && tab === 'Чаты' && (filter === 'all' || filter === 'channel') && channels.hasNextPage && <Button title="Ещё каналы" disabled={channels.isFetchingNextPage} onPress={() => { void channels.fetchNextPage(); }} />}
         {!searching && tab === 'Чаты' && (filter === 'all' || filter === 'group') && groups.hasNextPage && <Button title="Ещё группы" disabled={groups.isFetchingNextPage} onPress={() => { void groups.fetchNextPage(); }} />}
         {searching && users.data?.hasMore && <Label>Показаны первые 100 человек. Уточните логин.</Label>}
-      </View>} />
+      </View>} /></ChatBackground>
   </>}
   <View style={styles.tabs}>{(['Люди', 'Чаты', 'Профиль'] as const).map((name) => <Pressable key={name} accessibilityRole="tab" accessibilityState={{ selected: tab === name }} onPress={() => setTab(name)} style={[styles.tab, tab === name && styles.activeTab]}><Icon name={name === 'Люди' ? 'people' : name === 'Чаты' ? 'chats' : 'profile'} /><Text style={styles.tabText}>{name}</Text></Pressable>)}</View>
   <ActionSheet title="Создать чат" visible={creating} onClose={() => setCreating(false)} actions={[

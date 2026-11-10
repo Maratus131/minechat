@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSession } from '../auth/Session';
-import { acceptDeletion, acceptMessage, recoverHistories } from '../messages/history';
+import { acceptDeletion, acceptMessage, recoverHistories, historyKey, type History } from '../messages/history';
 import { consumeEvents, waitForReconnect } from './events';
+import { useNotifications } from '../notifications/Notifications';
 
 export type Connection = 'connecting' | 'syncing' | 'live' | 'reconnecting';
 export function useRealtime() {
   const { api } = useSession();
   const cache = useQueryClient();
+  const { incoming } = useNotifications();
   const [connection, setConnection] = useState<Connection>('connecting');
   useEffect(() => {
     const controller = new AbortController();
@@ -22,8 +24,14 @@ export function useRealtime() {
             setConnection('syncing');
             await recoverHistories(cache, api, connectionSignal);
             if (!connectionSignal.aborted) { setConnection('live'); liveSince = Date.now(); }
-          }, (message) => { if (!signal.aborted) acceptMessage(cache, message); },
-          (conversationId, messageId) => { if (!signal.aborted) acceptDeletion(cache, conversationId, messageId); });
+          }, (message) => {
+            if (signal.aborted) return;
+            const alreadyLoaded = cache.getQueryData<History>(historyKey(message.conversationId))?.items.some((item) => item.id === message.id) === true;
+            acceptMessage(cache, message);
+            incoming(message, alreadyLoaded);
+          },
+          (conversationId, messageId) => { if (!signal.aborted) acceptDeletion(cache, conversationId, messageId); },
+          (message) => { if (!signal.aborted) acceptMessage(cache, message); });
         } catch {
           if (signal.aborted) break;
           setConnection('reconnecting');
@@ -34,6 +42,6 @@ export function useRealtime() {
     }
     void connect();
     return () => controller.abort();
-  }, [api, cache]);
+  }, [api, cache, incoming]);
   return connection;
 }

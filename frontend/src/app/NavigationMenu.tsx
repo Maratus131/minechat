@@ -36,6 +36,7 @@ export function NavigationMenu({ create = false }: { create?: boolean }) {
       <Link to="/channels/new" onClick={close}><Icon name="channel" />Новый канал</Link>
       </> : <>
       <Link to="/profile" onClick={close}>Профиль и настройки</Link>
+      <Link to="/profile#notifications" onClick={close}>Уведомления</Link>
       <Link to={`${location.pathname}?search=1`} onClick={close}>Поиск людей и каналов</Link>
       <button onClick={signOut}>Выйти</button>
       </>}

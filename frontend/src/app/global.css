@@ -11,6 +11,7 @@
   --background: #252c23;
   --panel: #c6c6c6;
   --chat: #373d33;
+  --chat-pattern: url('/assets/chat-pattern.svg');
   --message: #e5e5db;
   --mine: #d7e5b8;
   --accent: #88b548;

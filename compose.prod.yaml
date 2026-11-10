@@ -54,6 +54,9 @@ services:
       DB_USER: chat
       DB_PASSWORD: ${DB_PASSWORD:?Generate .env.prod with deploy/init-env.sh}
       JWT_SECRET: ${JWT_SECRET:?Generate .env.prod with deploy/init-env.sh}
+      WEB_PUSH_PUBLIC_KEY: ${WEB_PUSH_PUBLIC_KEY:-}
+      WEB_PUSH_PRIVATE_KEY: ${WEB_PUSH_PRIVATE_KEY:-}
+      WEB_PUSH_SUBJECT: ${WEB_PUSH_SUBJECT:-}
       ELASTICSEARCH_URL: http://elasticsearch:9200
       CORS_ORIGINS: ${CORS_ORIGINS:?Set the public origin in .env.prod}
       JAVA_TOOL_OPTIONS: -Xms128m -Xmx512m -XX:MaxDirectMemorySize=128m -XX:MaxMetaspaceSize=256m

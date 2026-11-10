@@ -1,13 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSession } from './session';
 import { consumeEvents, waitForReconnect } from './events';
-import { acceptDeletion, acceptMessage, recoverHistories } from './history';
+import { acceptDeletion, acceptMessage, historyKey, recoverHistories, type History } from './history';
+import { useNotificationSound } from './NotificationSound';
 
 export function useRealtime() {
   const { api, auth } = useSession();
   const cache = useQueryClient();
+  const { incoming } = useNotificationSound();
+  const sound = useRef(incoming); sound.current = incoming;
   const [connection, setConnection] = useState('Подключение…');
   useEffect(() => {
     if (!auth) return;
@@ -26,8 +29,13 @@ export function useRealtime() {
               setConnection('Восстановление истории…');
               await recoverHistories(cache, api, connectionSignal);
               if (!connectionSignal.aborted) { setConnection('Подключено'); attempt = 0; }
-            }, (message) => { if (!signal.aborted) acceptMessage(cache, message); },
-            (conversationId, messageId) => { if (!signal.aborted) acceptDeletion(cache, conversationId, messageId); });
+            }, (message) => {
+              if (signal.aborted) return;
+              const alreadyLoaded = cache.getQueryData<History>(historyKey(message.conversationId))?.items.some((item) => item.id === message.id) ?? false;
+              sound.current(message, alreadyLoaded);
+              acceptMessage(cache, message);
+            }, (conversationId, messageId) => { if (!signal.aborted) acceptDeletion(cache, conversationId, messageId); },
+            (message) => { if (!signal.aborted) acceptMessage(cache, message); });
           } catch { if (signal.aborted) return; setConnection('Связь потеряна. Переподключение…'); }
           await waitForReconnect(Math.min(30_000, 1000 * 2 ** Math.min(attempt++, 5)), signal);
         }

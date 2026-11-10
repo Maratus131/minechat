@@ -4,6 +4,7 @@ import type { Profile } from '../../api/contracts';
 import { ErrorNotice } from '../../shared/ui';
 import { useAuth, useSession } from '../auth/Session';
 import { UserAvatar } from './UserAvatar';
+import { NotificationSettings } from '../notifications/Notifications';
 import styles from './ProfilePage.module.css';
 
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
@@ -18,6 +19,7 @@ export function ProfilePage() {
       {profile.isPending && <p role="status">Загрузка профиля…</p>}
       {profile.isError && <ErrorNotice error={profile.error} retry={() => void profile.refetch()} />}
       {profile.data && <ProfileEditor profile={profile.data} />}
+      <NotificationSettings />
       <h2 className={styles.section}>Сеанс</h2>
       <p>Вход действует до завершения сеанса или перезагрузки страницы.</p>
       <button onClick={signOut}>Выйти из аккаунта</button>

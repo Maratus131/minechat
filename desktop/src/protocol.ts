@@ -24,6 +24,7 @@ const contentTypes: Record<string, string> = {
   '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf',
   '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg', '.ico': 'image/x-icon', '.webp': 'image/webp',
+  '.mp3': 'audio/mpeg',
 };
 
 export function isAppUrl(value: string): boolean {

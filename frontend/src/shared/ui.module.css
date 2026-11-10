@@ -3,7 +3,7 @@
 .block::after { content: ''; position: absolute; width: 8px; height: 8px; background: #626954; left: 4px; top: 16px; }
 .avatar { width: 48px; height: 48px; display: grid; place-items: center; flex: none; overflow: hidden; background: #35542b; color: #f2f3df; border: 2px solid var(--border); box-shadow: inset 1px 1px #e0e6d3, inset -2px -2px #203719; font: 12px/1.4 var(--font-pixel); }
 .avatar img { width: 100%; height: 100%; display: block; object-fit: cover; }
-.status { min-height: 250px; height: 100%; padding: 30px 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; text-align: center; color: var(--text-on-dark); background: var(--chat); }
+.status { min-height: 250px; height: 100%; padding: 30px 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; text-align: center; color: var(--text-on-dark); background: var(--chat) var(--chat-pattern) repeat; }
 .status h2 { font: 16px/1.8 var(--font-pixel); margin: 0; }
 .description { color: var(--muted-on-dark); line-height: 1.7; max-width: 360px; }
 .description p { margin: 0 0 20px; }

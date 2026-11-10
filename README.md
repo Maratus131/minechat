@@ -6,8 +6,6 @@
 
 [Открыть сайт](https://84.201.180.177.sslip.io) · [Репозиторий](https://github.com/Maratus131/minechat)
 
-Инструкция по тестам, настройке нагрузки и показу преподавателю: [TESTING_AND_DEMO.md](TESTING_AND_DEMO.md).
-
 ## Что есть
 
 - Регистрация и вход по логину и паролю
@@ -100,7 +98,7 @@ pnpm exec expo start --go --lan --clear
 
 Веб-проверки запускаются из `frontend`: `pnpm test`, `pnpm typecheck`, `pnpm lint` и `pnpm build`. Тесты проверяют обработку событий WebSocket, восстановление истории и закрытие соединения. Из `desktop` можно запустить `pnpm test` для проверки прокси и настроек соединения. Для мобильного приложения из `mobile`: `pnpm typecheck`.
 
-Нагрузочный сценарий и команды запуска находятся в [loadtests/README.md](loadtests/README.md). Он запускается на отдельном локальном стенде, чтобы не нагружать рабочий сайт. Прогон на 100 одновременных пользователей прошёл без ошибок; результаты записаны в [loadtests/RESULTS.md](loadtests/RESULTS.md).
+Нагрузочные сценарии и команды запуска находятся в [loadtests/README.md](loadtests/README.md). Для HTTP-нагрузки на сервер используется Apache JMeter. Отдельный сценарий Node.js проверяет доставку через WebSocket. Результаты локального прогона записаны в [loadtests/RESULTS.md](loadtests/RESULTS.md); производительность облачного сервера ими не подтверждается.
 
 ## Docker и сервер
 

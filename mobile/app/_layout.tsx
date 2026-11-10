@@ -9,6 +9,7 @@ import { SessionProvider, useSession } from '../src/session';
 import { initializeFiles } from '../src/files';
 import { Label, Notice, s } from '../src/ui';
 import { useRealtime } from '../src/realtime';
+import { NotificationSoundProvider } from '../src/NotificationSound';
 
 function Routes() {
   const { auth } = useSession();
@@ -27,6 +28,6 @@ export default function Layout() {
   useEffect(() => { void initializeFiles().then(() => setFilesReady(true)); }, []);
   return <SafeAreaProvider><SafeAreaView style={s.screen}>
     <StatusBar style="light" />
-    {(!loaded && !error) || !filesReady ? <Label>Загрузка приложения…</Label> : <SessionProvider>{error && <Notice text="Шрифты не загрузились. Используется системный шрифт." />}<Routes /></SessionProvider>}
+    {(!loaded && !error) || !filesReady ? <Label>Загрузка приложения…</Label> : <SessionProvider><NotificationSoundProvider>{error && <Notice text="Шрифты не загрузились. Используется системный шрифт." />}<Routes /></NotificationSoundProvider></SessionProvider>}
   </SafeAreaView></SafeAreaProvider>;
 }

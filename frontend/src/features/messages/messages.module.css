@@ -6,7 +6,7 @@
 .peerName .online { color: #31551e; font-weight: 600; }
 .searchToggle { min-width: 170px; }
 .back, .searchMobile { display: none; }
-.historyWrap { min-height: 0; flex: 1; position: relative; display: flex; background: var(--chat); border: 2px solid var(--border); }
+.historyWrap { min-height: 0; flex: 1; position: relative; display: flex; background: var(--chat) var(--chat-pattern) repeat; border: 2px solid var(--border); }
 .history { min-height: 0; flex: 1; overflow: auto; padding: 16px 14px; overflow-anchor: auto; scrollbar-color: #919687 var(--chat); }
 .messageList { display: flex; flex-direction: column; list-style: none; padding: 0; margin: 0; gap: 12px; }
 .messageList > li { min-width: 0; }

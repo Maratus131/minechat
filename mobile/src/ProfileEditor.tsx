@@ -8,6 +8,7 @@ import { errorMessage, type PickedFile } from './api';
 import { discardFile, stageFile } from './files';
 import { useSession } from './session';
 import { Button, Field, Label, Notice, Title, s } from './ui';
+import { NotificationSoundSettings } from './NotificationSound';
 
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 
@@ -82,6 +83,7 @@ function ProfileForm({ profile }: { profile: Profile }) {
     <Label>Дата рождения видна только вам. Чтобы удалить её, очистите поле и сохраните профиль.</Label>
     <Button title={save.isPending ? 'Сохранение…' : 'Сохранить профиль'} disabled={busy || !changed} onPress={() => save.mutate()} />
     {(pickError || save.error || upload.error || remove.error) && <Notice text={pickError || errorMessage(save.error || upload.error || remove.error)} />}
+    <NotificationSoundSettings />
     <Button title="Выйти" onPress={logout} />
   </ScrollView>;
 }
