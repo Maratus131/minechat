@@ -7,7 +7,7 @@ import { validateCredentials } from './validation';
 import styles from './AuthPage.module.css';
 
 export function AuthPage({ register = false }: { register?: boolean }) {
-  const { session, signIn, notice } = useAuth();
+  const { session, signIn, prepareSignIn, notice } = useAuth();
   const [error, setError] = useState('');
   const [pending, setPending] = useState(false);
   const request = useRef<AbortController | null>(null);
@@ -28,6 +28,8 @@ export function AuthPage({ register = false }: { register?: boolean }) {
     setError('');
     const api = new ChatApi();
     try {
+      await prepareSignIn();
+      controller.signal.throwIfAborted();
       const response = 'displayName' in data ? await api.register(data, controller.signal) : await api.login(data, controller.signal);
       if (!controller.signal.aborted) signIn(response);
     } catch (cause) {

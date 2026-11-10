@@ -50,7 +50,7 @@ class NotificationSession {
     document.addEventListener('pointerdown', this.unlock, { once: true, capture: true });
     document.addEventListener('keydown', this.unlock, { once: true, capture: true });
     navigator.serviceWorker?.addEventListener('message', this.workerMessage);
-    this.removeDisposeListener = api.onDispose(() => this.stop(true));
+    this.removeDisposeListener = api.onDispose((reason) => this.stop(reason !== 'refresh'));
   }
   private binding(): PushBinding { return { userId: this.userId, sessionId: this.sessionId, expiresAt: this.expiresAt, sound: this.preferences.sound, enabled: this.preferences.system }; }
   private valid() { return this.active && Date.now() < this.expiresAt; }

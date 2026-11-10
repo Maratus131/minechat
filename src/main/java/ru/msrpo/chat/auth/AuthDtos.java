@@ -10,4 +10,11 @@ public final class AuthDtos {
             @NotBlank @Size(min = 8, max = 72) String password) {}
     public record LoginRequest(@NotBlank @Size(max = 32) String username, @NotBlank @Size(max = 72) String password) {}
     public record AuthResponse(String accessToken, String tokenType, long expiresIn, UserResponse user) {}
+    public record RefreshRequest(@NotBlank @Size(max = 128) String refreshToken) {
+        @Override public String toString() { return "RefreshRequest[token=REDACTED]"; }
+    }
+    public record DeviceAuthResponse(String accessToken, String tokenType, long expiresIn, UserResponse user,
+                                     String refreshToken, long refreshExpiresIn) {
+        @Override public String toString() { return "DeviceAuthResponse[credentials=REDACTED]"; }
+    }
 }

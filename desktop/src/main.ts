@@ -1,8 +1,10 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, protocol, session } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, Menu, protocol, safeStorage, session } from 'electron';
 import { basename, join } from 'node:path';
 import { backendOrigin } from './config.js';
 import { APP_ORIGIN, APP_SCHEME, createAppHandler, isAppPage, isAppUrl } from './protocol.js';
 import { installNotifications } from './notifications.js';
+import { SessionVault } from './session-vault.js';
+import { deviceAuthProxy } from './device-auth.js';
 
 app.setName('Minechat');
 app.setAppUserModelId('ru.msrpo.minechat');
@@ -49,7 +51,7 @@ function installMenu(): void {
       { role: 'paste', label: 'Вставить' }, { role: 'selectAll', label: 'Выделить всё' },
     ] },
     { label: 'Вид', submenu: [
-      { role: 'reload', label: 'Перезагрузить (потребуется вход)' },
+      { role: 'reload', label: 'Перезагрузить' },
       { role: 'resetZoom', label: 'Исходный масштаб' }, { role: 'zoomIn', label: 'Увеличить' },
       { role: 'zoomOut', label: 'Уменьшить' }, { role: 'togglefullscreen', label: 'Полный экран' },
     ] },
@@ -72,7 +74,18 @@ async function initialize(): Promise<void> {
       || !isAppPage(event.senderFrame.url)) throw new Error('Источник запроса недоступен.');
     return realtime.href;
   });
-  const handler = await createAppHandler(join(app.getAppPath(), 'renderer'), upstream, lifetime.signal);
+  const vault = new SessionVault(app.getPath('userData'), upstream, {
+    available: async () => await safeStorage.isAsyncEncryptionAvailable()
+      && (process.platform !== 'linux' || safeStorage.isEncryptionAvailable() && !['basic_text', 'unknown'].includes(safeStorage.getSelectedStorageBackend())),
+    encrypt: (value) => safeStorage.encryptStringAsync(value),
+    decrypt: async (value) => (await safeStorage.decryptStringAsync(value)).result,
+  });
+  ipcMain.handle('minechat:session-persistence', (event) => {
+    if (!window || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame
+      || !isAppPage(event.senderFrame.url)) throw new Error('Источник запроса недоступен.');
+    return vault.persistence();
+  });
+  const handler = await createAppHandler(join(app.getAppPath(), 'renderer'), upstream, lifetime.signal, deviceAuthProxy(upstream, vault, lifetime.signal));
   const currentSession = session.defaultSession;
   currentSession.setPermissionRequestHandler((contents, permission, callback, details) => {
     callback(permission === 'media' && contents === window?.webContents

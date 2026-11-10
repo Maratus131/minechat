@@ -7,7 +7,7 @@ import { useNotifications } from '../notifications/Notifications';
 
 export type Connection = 'connecting' | 'syncing' | 'live' | 'reconnecting';
 export function useRealtime() {
-  const { api } = useSession();
+  const { api, expiresAt } = useSession();
   const cache = useQueryClient();
   const { incoming } = useNotifications();
   const [connection, setConnection] = useState<Connection>('connecting');
@@ -42,6 +42,6 @@ export function useRealtime() {
     }
     void connect();
     return () => controller.abort();
-  }, [api, cache, incoming]);
+  }, [api, expiresAt, cache, incoming]);
   return connection;
 }

@@ -54,6 +54,7 @@ services:
       DB_USER: chat
       DB_PASSWORD: ${DB_PASSWORD:?Generate .env.prod with deploy/init-env.sh}
       JWT_SECRET: ${JWT_SECRET:?Generate .env.prod with deploy/init-env.sh}
+      AUTH_COOKIE_SECURE: "true"
       WEB_PUSH_PUBLIC_KEY: ${WEB_PUSH_PUBLIC_KEY:-}
       WEB_PUSH_PRIVATE_KEY: ${WEB_PUSH_PRIVATE_KEY:-}
       WEB_PUSH_SUBJECT: ${WEB_PUSH_SUBJECT:-}

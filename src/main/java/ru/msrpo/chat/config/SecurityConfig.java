@@ -14,6 +14,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.*;
 import ru.msrpo.chat.auth.JwtAuthenticationFilter;
+import ru.msrpo.chat.auth.AuthOriginFilter;
 import java.util.List;
 import java.util.ArrayList;
 
@@ -24,12 +25,14 @@ public class SecurityConfig {
     public record CorsProperties(List<String> allowedOrigins) {}
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter filter) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter filter, AuthOriginFilter authOrigin) throws Exception {
         return http.csrf(AbstractHttpConfigurer::disable).cors(cors -> {})
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
-                .requestMatchers("/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/ws", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                .requestMatchers("/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/logout",
+                    "/api/v1/auth/device/register", "/api/v1/auth/device/login", "/api/v1/auth/device/refresh", "/api/v1/auth/device/logout",
+                    "/api/v1/ws", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 .anyRequest().authenticated())
             .exceptionHandling(errors -> errors
                 .authenticationEntryPoint((request, response, error) -> JwtAuthenticationFilter.unauthorized(response))
@@ -37,16 +40,22 @@ public class SecurityConfig {
                     response.setStatus(403); response.setContentType("application/problem+json");
                     response.getWriter().write("{\"type\":\"about:blank\",\"title\":\"Forbidden\",\"status\":403}");
                 }))
-            .addFilterBefore(filter, UsernamePasswordAuthenticationFilter.class).build();
+            .addFilterBefore(filter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(authOrigin, JwtAuthenticationFilter.class).build();
     }
     @Bean
     FilterRegistrationBean<JwtAuthenticationFilter> disableServletRegistration(JwtAuthenticationFilter filter) {
+        var registration = new FilterRegistrationBean<>(filter); registration.setEnabled(false); return registration;
+    }
+    @Bean
+    FilterRegistrationBean<AuthOriginFilter> disableAuthOriginServletRegistration(AuthOriginFilter filter) {
         var registration = new FilterRegistrationBean<>(filter); registration.setEnabled(false); return registration;
     }
     @Bean PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(12); }
     @Bean CorsConfigurationSource corsConfigurationSource(CorsProperties properties) {
         var config = new CorsConfiguration();
         config.setAllowedOrigins(properties.allowedOrigins());
+        config.setAllowCredentials(true);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         config.setExposedHeaders(List.of("Content-Disposition"));

@@ -1,6 +1,16 @@
 import { combineAbortSignals } from './abort';
 export interface PickedFile { uri: string; name: string; size: number; mimeType?: string }
-import { InvalidResponseError, parseAuth, parseChannel, parseChannelMember, parseConversation, parseGroup, parseGroupMember, parseMessage, parsePage, parsePresence, parseProfile, parseUser, type CreateChannel, type Credentials, type GroupRole, type Registration } from '../../frontend/src/api/contracts';
+import { InvalidResponseError, object, parseAuth, parseChannel, parseChannelMember, parseConversation, parseGroup, parseGroupMember, parseMessage, parsePage, parsePresence, parseProfile, parseUser, type AuthResponse, type CreateChannel, type Credentials, type GroupRole, type Registration } from '../../frontend/src/api/contracts';
+
+export interface DeviceAuthResponse extends AuthResponse { refreshToken: string; refreshExpiresIn: number }
+export function parseDeviceAuth(value: unknown): DeviceAuthResponse {
+  const item = object(value);
+  const auth = parseAuth(value);
+  if (typeof item.refreshToken !== 'string' || !item.refreshToken || item.refreshToken.length > 4096
+    || typeof item.refreshExpiresIn !== 'number' || !Number.isSafeInteger(item.refreshExpiresIn) || item.refreshExpiresIn <= 0
+    || auth.expiresIn <= 0) throw new InvalidResponseError();
+  return { ...auth, refreshToken: item.refreshToken, refreshExpiresIn: item.refreshExpiresIn };
+}
 
 export const baseUrl = (process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2:8080/api/v1').replace(/\/$/, '');
 export function assertApiUrl() {
@@ -37,10 +47,12 @@ async function responseError(response: Response): Promise<ApiError> {
 
 export class ChatApi {
   private readonly lifetime = new AbortController();
-  constructor(readonly token?: string, private readonly onUnauthorized?: () => void) {}
+  constructor(private accessToken?: string, private readonly onUnauthorized?: () => void) {}
+  get token() { return this.accessToken; }
+  replaceAccessToken(token: string) { this.accessToken = token; }
   dispose() { this.lifetime.abort(); }
   get disposed() { return this.lifetime.signal.aborted; }
-  expire() { this.dispose(); this.onUnauthorized?.(); }
+  expire() { this.onUnauthorized?.(); }
   async createRealtimeSocket(signal: AbortSignal): Promise<WebSocket> {
     assertApiUrl();
     if (!this.token || signal.aborted || this.disposed) throw new Error('Сеанс завершён.');
@@ -64,7 +76,8 @@ export class ChatApi {
   async request<T>(path: string, options: RequestInit, consume: (response: Response) => Promise<T>): Promise<T> {
     assertApiUrl();
     const headers = new Headers(options.headers);
-    if (this.token) headers.set('Authorization', `Bearer ${this.token}`);
+    const deviceAuthentication = path.startsWith('/auth/device/');
+    if (this.token && !deviceAuthentication) headers.set('Authorization', `Bearer ${this.token}`);
     const combined = options.signal ? combineAbortSignals(options.signal, this.lifetime.signal) : undefined;
     const signal = combined?.signal ?? this.lifetime.signal;
     try {
@@ -76,7 +89,7 @@ export class ChatApi {
       }
       if (!response.ok) {
         const error = await responseError(response);
-        if (response.status === 401 && this.token && !signal.aborted) this.expire();
+        if (response.status === 401 && this.token && !deviceAuthentication && !signal.aborted) this.expire();
         throw error;
       }
       return await consume(response);
@@ -104,6 +117,18 @@ export class ChatApi {
   }
   register(registration: Registration, signal?: AbortSignal) {
     return this.json('/auth/register', parseAuth, this.post(registration, signal));
+  }
+  deviceLogin(credentials: Credentials, signal?: AbortSignal) {
+    return this.json('/auth/device/login', parseDeviceAuth, this.post(credentials, signal));
+  }
+  deviceRegister(registration: Registration, signal?: AbortSignal) {
+    return this.json('/auth/device/register', parseDeviceAuth, this.post(registration, signal));
+  }
+  refreshDevice(refreshToken: string, signal?: AbortSignal) {
+    return this.json('/auth/device/refresh', parseDeviceAuth, this.post({ refreshToken }, signal));
+  }
+  logoutDevice(refreshToken: string, signal?: AbortSignal) {
+    return this.request('/auth/device/logout', this.post({ refreshToken }, signal), async () => undefined);
   }
   me(signal?: AbortSignal) { return this.json('/users/me', parseProfile, { signal }); }
   updateProfile(displayName: string, birthDate: string | null) {

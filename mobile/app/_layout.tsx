@@ -1,20 +1,22 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { useFonts, PressStart2P_400Regular } from '@expo-google-fonts/press-start-2p';
 import { RobotoMono_400Regular } from '@expo-google-fonts/roboto-mono';
 import { SessionProvider, useSession } from '../src/session';
 import { initializeFiles } from '../src/files';
-import { Label, Notice, s } from '../src/ui';
+import { Button, Label, Notice, s } from '../src/ui';
 import { useRealtime } from '../src/realtime';
 import { NotificationSoundProvider } from '../src/NotificationSound';
 
 function Routes() {
-  const { auth } = useSession();
+  const { auth, status, notice, retry, logout } = useSession();
   const connection = useRealtime();
-  return <>{auth && connection !== 'Подключено' && <Text accessibilityLiveRegion="polite" style={styles.connection}>{connection}</Text>}<Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#252c23' } }}>
+  if (!auth && status === 'loading') return <View style={s.content}><Label>Восстановление входа…</Label></View>;
+  if (!auth && status === 'error') return <View style={s.content}><Notice text={notice} /><Button title="Повторить" onPress={retry} /><Button title="Выйти из сохранённого аккаунта" onPress={logout} /></View>;
+  return <>{!!notice && <Notice text={notice} />}{auth && !!notice && <Button title="Повторить подключение" onPress={retry} />}{auth && connection !== 'Подключено' && <Text accessibilityLiveRegion="polite" style={styles.connection}>{connection}</Text>}<Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#252c23' } }}>
     <Stack.Protected guard={!!auth}><Stack.Screen name="index" /><Stack.Screen name="create" /><Stack.Screen name="group/create" /><Stack.Screen name="chat/[id]" /><Stack.Screen name="members/[id]" /></Stack.Protected>
     <Stack.Protected guard={!auth}><Stack.Screen name="login" /></Stack.Protected>
   </Stack></>;

@@ -7,7 +7,7 @@ const config: ExpoConfig = {
   ios: { bundleIdentifier: 'ru.msrpo.minechat', supportsTablet: true },
   android: { package: 'ru.msrpo.minechat', softwareKeyboardLayoutMode: 'resize' },
   plugins: [
-    'expo-router', 'expo-font',
+    'expo-router', 'expo-font', 'expo-secure-store',
     ['expo-audio', { microphonePermission: 'Разрешите Minechat записывать голосовые сообщения.', enableBackgroundRecording: false, enableBackgroundPlayback: false }],
     ['expo-image-picker', { photosPermission: 'Выберите фото или видео для сообщения.', cameraPermission: false, microphonePermission: false }],
     ['expo-video', { supportsBackgroundPlayback: false, supportsPictureInPicture: false }],

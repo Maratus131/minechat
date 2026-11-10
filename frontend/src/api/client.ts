@@ -1,12 +1,14 @@
 import { InvalidResponseError, parseAuth, parseChannel, parseChannelMember, parseConversation, parseGroup, parseGroupMember, parseMessage, parsePage, parsePresence, parseProfile, parseUser, type CreateChannel, type Credentials, type GroupRole, type Registration } from './contracts';
+import { cookieMutation } from '../features/auth/cookie-mutations';
 
-const baseUrl = (import.meta.env.VITE_API_URL || '/api/v1').replace(/\/$/, '');
+const baseUrl = (import.meta.env?.VITE_API_URL || '/api/v1').replace(/\/$/, '');
 declare global {
   interface Window { minechat?: {
     getRealtimeUrl: () => Promise<string>;
     setNotificationSession: (token: string | null) => Promise<boolean>;
     notify: (notification: { recipientId: string; messageId: number; conversationId: string; title: string; url: string }) => Promise<boolean>;
     onNotificationOpen: (callback: (url: string) => void) => () => void;
+    getSessionPersistence: () => Promise<'encrypted' | 'memory'>;
   } }
 }
 
@@ -38,11 +40,14 @@ async function responseError(response: Response): Promise<ApiError> {
 
 export class ChatApi {
   private readonly lifetime = new AbortController();
-  private readonly disposeListeners = new Set<() => void>();
-  constructor(private readonly token?: string, private readonly onUnauthorized?: () => void) {}
-  dispose() { for (const listener of this.disposeListeners) listener(); this.disposeListeners.clear(); this.lifetime.abort(); }
-  onDispose(listener: () => void) {
-    if (this.lifetime.signal.aborted) listener(); else this.disposeListeners.add(listener);
+  private readonly disposeListeners = new Set<(reason: 'end' | 'refresh') => void>();
+  private token?: string;
+  private readonly onUnauthorized?: () => void;
+  constructor(token?: string, onUnauthorized?: () => void) { this.token = token; this.onUnauthorized = onUnauthorized; }
+  replaceAccessToken(token: string) { this.token = token; }
+  dispose(reason: 'end' | 'refresh' = 'end') { for (const listener of this.disposeListeners) listener(reason); this.disposeListeners.clear(); this.lifetime.abort(); }
+  onDispose(listener: (reason: 'end' | 'refresh') => void) {
+    if (this.lifetime.signal.aborted) listener('end'); else this.disposeListeners.add(listener);
     return () => { this.disposeListeners.delete(listener); };
   }
   authorizeDesktopNotifications() { return window.minechat?.setNotificationSession(this.token ?? null); }
@@ -92,17 +97,26 @@ export class ChatApi {
 
   async request(path: string, options: RequestInit = {}): Promise<Response> {
     const headers = new Headers(options.headers);
-    if (this.token) headers.set('Authorization', `Bearer ${this.token}`);
-    const signal = options.signal ? AbortSignal.any([options.signal, this.lifetime.signal]) : this.lifetime.signal;
+    const anonymousAuth = /^\/auth\/(?:login|register|refresh|logout)$/.test(path);
+    const accessToken = this.token;
+    if (accessToken && !anonymousAuth) headers.set('Authorization', `Bearer ${accessToken}`);
+    if (anonymousAuth) headers.delete('Authorization');
+    const boundedAuth = anonymousAuth ? AbortSignal.timeout(path === '/auth/logout' ? 5000 : 10_000) : null;
+    const signals = [this.lifetime.signal, ...(options.signal ? [options.signal] : []), ...(boundedAuth ? [boundedAuth] : [])];
+    const signal = signals.length > 1 ? AbortSignal.any(signals) : this.lifetime.signal;
     let response: Response;
-    try { response = await fetch(`${baseUrl}${path}`, { ...options, headers, signal }); }
+    try {
+      const operation = () => fetch(`${baseUrl}${path}`, { ...options, headers, signal });
+      const mutatesCookie = anonymousAuth && path !== '/auth/refresh' && window.location.protocol !== 'minechat:';
+      response = mutatesCookie ? await cookieMutation(new URL(baseUrl, window.location.href).href, signal, operation, navigator.locks) : await operation();
+    }
     catch (error) {
       if (signal.aborted) throw error;
       throw new ApiError(0, 'Нет связи с сервером. Проверьте подключение и повторите попытку.');
     }
     if (!response.ok) {
       const error = await responseError(response);
-      if (response.status === 401 && this.token && !signal.aborted) this.onUnauthorized?.();
+      if (response.status === 401 && accessToken && accessToken === this.token && !anonymousAuth && !signal.aborted) this.onUnauthorized?.();
       throw error;
     }
     return response;
@@ -122,11 +136,13 @@ export class ChatApi {
     return { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal };
   }
   login(credentials: Credentials, signal?: AbortSignal) {
-    return this.json('/auth/login', parseAuth, this.post(credentials, signal));
+    return this.json('/auth/login', parseAuth, { ...this.post(credentials, signal), credentials: 'include' });
   }
   register(registration: Registration, signal?: AbortSignal) {
-    return this.json('/auth/register', parseAuth, this.post(registration, signal));
+    return this.json('/auth/register', parseAuth, { ...this.post(registration, signal), credentials: 'include' });
   }
+  refresh(signal?: AbortSignal) { return this.json('/auth/refresh', parseAuth, { ...this.post({}, signal), credentials: 'include' }); }
+  async logout(signal?: AbortSignal) { await this.request('/auth/logout', { ...this.post({}, signal), credentials: 'include' }); }
   me(signal?: AbortSignal) { return this.json('/users/me', parseProfile, { signal }); }
   updateProfile(displayName: string, birthDate: string | null, signal?: AbortSignal) {
     return this.json('/users/me', parseProfile, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ displayName, birthDate }), signal });

@@ -92,7 +92,8 @@ async function proxyApi(request: Request, url: URL, upstream: string, lifetime: 
   } finally { clearTimeout(timer); }
 }
 
-export async function createAppHandler(rendererDirectory: string, upstream: string, lifetime: AbortSignal) {
+export async function createAppHandler(rendererDirectory: string, upstream: string, lifetime: AbortSignal,
+  deviceAuth?: (request: Request, action: string) => Promise<Response>) {
   const realtime = new URL('/api/v1/ws', upstream);
   realtime.protocol = realtime.protocol === 'https:' ? 'wss:' : 'ws:';
   const rendererHeaders = { ...securityHeaders, 'Content-Security-Policy': csp.replace("connect-src 'self'", `connect-src 'self' ${realtime.origin}`) };
@@ -104,11 +105,18 @@ export async function createAppHandler(rendererDirectory: string, upstream: stri
     let pathname: string;
     try { pathname = decodeURIComponent(url.pathname); }
     catch { return problem(400, 'Некорректный путь.'); }
-    if (/[\\\u0000-\u001f\u007f]/.test(pathname) || /%2f|%5c|%25/i.test(url.pathname)
+    if (/[\\;\u0000-\u001f\u007f]/.test(pathname) || pathname.includes('//') || /%2f|%5c|%25/i.test(url.pathname)
       || pathname.split('/').some((segment) => segment === '.' || segment === '..')) {
       return problem(400, 'Некорректный путь.');
     }
     if (pathname === '/api/v1' || pathname.startsWith('/api/v1/')) {
+      if (pathname === '/api/v1/auth/device' || pathname.startsWith('/api/v1/auth/device/')) return problem(403, 'Этот адрес недоступен.');
+      const authAction = /^\/api\/v1\/auth\/(register|login|refresh|logout)$/.exec(pathname)?.[1];
+      if (authAction) {
+        if (url.search || !deviceAuth) return problem(503, 'Сохранение входа недоступно.');
+        return deviceAuth(request, authAction);
+      }
+      if (pathname === '/api/v1/auth' || pathname.startsWith('/api/v1/auth/')) return problem(403, 'Этот адрес недоступен.');
       return proxyApi(request, url, upstream, lifetime);
     }
     if (pathname === '/api' || pathname.startsWith('/api/')) return problem(404, 'API не найден.');

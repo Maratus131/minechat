@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { formatSize } from '../../shared/ui';
 import styles from './messages.module.css';
+import { voicePlaybackError } from './voice-format';
 
 const BAR_COUNT = 48;
 const EMPTY_BARS = Array.from({ length: BAR_COUNT }, () => 0.2);
@@ -14,6 +15,7 @@ export function VoiceMessage({ src, blob, sizeBytes, onError }: {
   src?: string; blob: Blob; sizeBytes: number; onError?: () => void;
 }) {
   const audio = useRef<HTMLAudioElement>(null);
+  const playbackAttempt = useRef(0);
   const [playing, setPlaying] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [position, setPosition] = useState(0);
@@ -24,6 +26,7 @@ export function VoiceMessage({ src, blob, sizeBytes, onError }: {
   useEffect(() => {
     const element = audio.current;
     if (!element) return;
+    const attempts = playbackAttempt;
     const url = src || URL.createObjectURL(blob);
     element.src = url;
     const pauseForOtherAudio = (event: Event) => {
@@ -31,6 +34,7 @@ export function VoiceMessage({ src, blob, sizeBytes, onError }: {
     };
     document.addEventListener('play', pauseForOtherAudio, true);
     return () => {
+      attempts.current++;
       document.removeEventListener('play', pauseForOtherAudio, true);
       element.pause(); element.removeAttribute('src'); element.load();
       if (!src) URL.revokeObjectURL(url);
@@ -65,11 +69,14 @@ export function VoiceMessage({ src, blob, sizeBytes, onError }: {
   async function togglePlayback() {
     const element = audio.current;
     if (!element) return;
+    const attempt = ++playbackAttempt.current;
     setError('');
     try {
       if (element.paused) { if (element.ended) element.currentTime = 0; await element.play(); }
       else element.pause();
-    } catch { setError('Не удалось воспроизвести запись. Попробуйте ещё раз.'); }
+    } catch (cause) {
+      if (attempt === playbackAttempt.current) setError(voicePlaybackError(cause));
+    }
   }
 
   const progress = duration > 0 ? Math.min(1, position / duration) : 0;
@@ -83,7 +90,7 @@ export function VoiceMessage({ src, blob, sizeBytes, onError }: {
     }} onPause={() => setPlaying(false)}
       onEnded={() => setPlaying(false)} onTimeUpdate={() => setPosition(audio.current?.currentTime ?? 0)}
       onError={() => { setError('Этот браузер не воспроизводит запись.'); onError?.(); }} />
-    <button type="button" className={styles.voicePlay} disabled={!loaded} onClick={() => void togglePlayback()}
+    <button type="button" className={styles.voicePlay} onClick={() => void togglePlayback()}
       aria-label={playing ? 'Приостановить голосовое' : 'Слушать голосовое'} aria-pressed={playing}>
       {playing ? <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h4v16H6zm8 0h4v16h-4z" /></svg>
         : <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3v18l15-9z" /></svg>}

@@ -11,7 +11,7 @@ const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 
 export function ProfilePage() {
   const { api } = useSession();
-  const { signOut } = useAuth();
+  const { signOut, notice } = useAuth();
   const profile = useQuery({ queryKey: ['me'], queryFn: ({ signal }) => api.me(signal) });
   return <section className={styles.page} aria-labelledby="profile-title">
     <header><h1 id="profile-title">Профиль и настройки</h1></header>
@@ -21,7 +21,8 @@ export function ProfilePage() {
       {profile.data && <ProfileEditor profile={profile.data} />}
       <NotificationSettings />
       <h2 className={styles.section}>Сеанс</h2>
-      <p>Вход действует до завершения сеанса или перезагрузки страницы.</p>
+      <p>Вход сохраняется после перезагрузки и повторного запуска приложения до 30 дней. Кнопка ниже завершает вход на этом устройстве.</p>
+      {notice && <p role="status">{notice}</p>}
       <button onClick={signOut}>Выйти из аккаунта</button>
     </div>
   </section>;

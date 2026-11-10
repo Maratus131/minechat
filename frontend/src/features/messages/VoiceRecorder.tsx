@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../../shared/Icon';
 import styles from './messages.module.css';
+import { voiceRecordingType } from './voice-format';
 
 const MAX_BYTES = 10 * 1024 * 1024;
 const MAX_SECONDS = 120;
@@ -48,8 +49,8 @@ export function VoiceRecorder({ disabled, onActiveChange, onReady }: {
     if (typeof MediaRecorder === 'undefined') {
       setError('Этот браузер не поддерживает запись голоса. Попробуйте другой браузер.'); return;
     }
-    const mime = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus']
-      .find((type) => MediaRecorder.isTypeSupported(type));
+    const playback = document.createElement('audio');
+    const mime = voiceRecordingType((type) => MediaRecorder.isTypeSupported(type), (type) => playback.canPlayType(type));
     if (!mime) { setError('В браузере нет поддерживаемого формата записи голоса.'); return; }
     const ticket = ++generation.current;
     setStatus('requesting'); onActiveChange(true);
@@ -80,8 +81,9 @@ export function VoiceRecorder({ disabled, onActiveChange, onReady }: {
         setStatus('idle'); onActiveChange(false);
         if (discard.current) return;
         if (!size) { setError('Запись получилась пустой. Попробуйте ещё раз.'); return; }
-        const extension = mime.startsWith('audio/mp4') ? 'm4a' : mime.startsWith('audio/ogg') ? 'ogg' : 'weba';
-        onReady(new File(chunks, `voice-${Date.now()}.${extension}`, { type: mime }));
+        const actualType = current.mimeType || mime;
+        const extension = actualType.startsWith('audio/mp4') ? 'm4a' : actualType.startsWith('audio/ogg') ? 'ogg' : 'weba';
+        onReady(new File(chunks, `voice-${Date.now()}.${extension}`, { type: actualType }));
       };
       current.start(250);
       setSeconds(0); setStatus('recording');

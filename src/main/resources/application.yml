@@ -31,6 +31,9 @@ server:
   tomcat:
     max-part-count: 10
 app:
+  auth:
+    session-ttl: 30d
+    cookie-secure: ${AUTH_COOKIE_SECURE:true}
   push:
     public-key: ${WEB_PUSH_PUBLIC_KEY:}
     private-key: ${WEB_PUSH_PRIVATE_KEY:}

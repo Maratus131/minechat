@@ -5,7 +5,6 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import ru.msrpo.chat.common.ApiException;
 import ru.msrpo.chat.user.*;
 import java.nio.charset.StandardCharsets;
@@ -21,7 +20,7 @@ public class AuthService {
     // A valid hash makes an unknown login perform the same expensive password check.
     private final String dummyHash = new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder(12).encode("not-a-user-password");
 
-    @Transactional
+    // BCrypt work must not hold a DB transaction; saveAndFlush keeps its own short write transaction.
     public AuthResponse register(RegisterRequest request) {
         validatePasswordLength(request.password());
         var user = ChatUser.create(request.username().toLowerCase(Locale.ROOT), request.displayName().trim(), passwords.encode(request.password()));
@@ -29,7 +28,6 @@ public class AuthService {
         catch (DataIntegrityViolationException error) { throw new ApiException(HttpStatus.CONFLICT, "Логин уже занят"); }
         return response(user);
     }
-    @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request) {
         validatePasswordLength(request.password());
         var user = users.findByUsername(request.username().trim().toLowerCase(Locale.ROOT));
